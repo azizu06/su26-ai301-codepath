@@ -41,7 +41,7 @@ The fix path is clearly defined — the codebase already has working PAT authent
 
 ### Cohort Issue Ledger Entry
 
-- [ ] Entered in cohort issue ledger
+- [x] Entered in cohort issue ledger
 
 ---
 
