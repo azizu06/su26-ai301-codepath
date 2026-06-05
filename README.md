@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | _Phase 1 / 2 / 3 / 4_ |
-| **Progress summary** | _1-2 sentences on what you completed_ |
-| **Deliverable links** | _GitHub links to relevant commits, branches, PRs_ |
-| **Blockers / questions** | _What's blocking you or what you need help with_ |
+| **Current phase** | Phase I — Issue Selection |
+| **Progress summary** | Selected shields/shields issue #10162 (Azure DevOps build badge missing PAT auth), forked the repository, and commented on the issue to signal intent. |
+| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) |
+| **Blockers / questions** | None |
 
 ---
 
@@ -26,18 +26,18 @@
 
 ### Selected Issue
 
-- **Repository:**
-- **Issue URL:**
-- **Issue title:**
-- **Labels / tags:**
+- **Repository:** [badges/shields](https://github.com/badges/shields)
+- **Issue URL:** https://github.com/badges/shields/issues/10162
+- **Issue title:** Azure DevOps - Build Badge - PAT Token not used on private projects
+- **Labels / tags:** `good first issue`, `service-badge`
 
 ### Problem Summary
 
-_What is the bug or feature request? Describe the problem in your own words in 3-5 sentences. Do not copy-paste the issue description._
+Shields.io generates live status badges for GitHub READMEs by fetching data from third-party APIs. It already supports Personal Access Token (PAT) authentication for several Azure DevOps badge types — coverage, test results, work items — but the build badge handler was written without PAT support. This means that when an organization's Azure DevOps instance is configured to block anonymous API requests (a standard enterprise security policy), the build badge silently fails while every other Azure DevOps badge on that same project works fine. The fix is to add PAT authentication to the build badge handler, following the pattern already established by the other Azure DevOps badge implementations in the same codebase.
 
 ### Why I Chose This Issue
 
-_Why is this issue a good fit for your skill level and the 10-week timeline? What made it stand out over other candidates?_
+The fix path is clearly defined — the codebase already has working PAT authentication in neighboring Azure DevOps service files, so the work is understanding that existing pattern and applying it consistently to the build badge. The project is JavaScript/Node.js, which aligns with my stack. Shields.io is one of the most widely-used developer infrastructure tools in open source, which means a merged contribution has real visibility and portfolio value. The issue is labeled `good first issue`, has no assignee, and has no open pull requests — it is available, scoped appropriately for a 3–4 week cycle, and the project has strong contributor documentation and an active community.
 
 ### Cohort Issue Ledger Entry
 
@@ -51,8 +51,8 @@ _Why is this issue a good fit for your skill level and the 10-week timeline? Wha
 
 ### Repository Fork
 
-- **Fork URL:**
-- **Local setup completed:** Yes / No
+- **Fork URL:** https://github.com/azizu06/shields
+- **Local setup completed:** No — Phase II
 
 ### Reproduction
 
