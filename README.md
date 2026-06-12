@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Phase I — Issue Selection |
-| **Progress summary** | Selected shields/shields issue #10162 (Azure DevOps build badge missing PAT auth), forked the repository, and commented on the issue to signal intent. |
-| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) |
-| **Blockers / questions** | None |
+| **Current phase** | Phase II — Reproduction & Solution Planning |
+| **Progress summary** | Cloned the fork and installed shields locally; traced the bug to the Azure DevOps **build** badge extending the no-auth scraper base class instead of the authenticated API base class its siblings use, and pinned the root cause to specific files/lines; wrote a UMPIRE migration plan. |
+| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Reproduction commit](https://github.com/azizu06/shields/commit/fce9f6a9868551e3c545860c2f6f28bc195c257e) · [Plan commit](https://github.com/azizu06/shields/commit/1ce3d503e692e158180769b974fe4169b4baf5d9) |
+| **Blockers / questions** | None blocking. One open design question: replicate the `stage`/`job` filters via Azure's Timeline API, or scope them out of this PR — will confirm with the maintainer. |
 
 ---
 
@@ -52,36 +52,92 @@ The fix path is clearly defined — the codebase already has working PAT authent
 ### Repository Fork
 
 - **Fork URL:** https://github.com/azizu06/shields
-- **Local setup completed:** No — Phase II
+- **Local setup completed:** **Yes** — cloned the fork, `npm ci` completed with no errors, dev server runs.
 
 ### Reproduction
 
 **Environment:**
-- OS:
-- Language / runtime version:
-- Steps to reproduce:
+- **OS:** macOS (Apple Silicon), Darwin 25.5
+- **Language / runtime version:** Node.js **v24.15.0** (via nvm), npm 11.x
+- **Repo:** `badges/shields` (default branch `master`); fork `azizu06/shields`
+
+**Setup notes / challenges (real issues I hit and fixed):**
+1. shields' default branch is **`master`**, not `main`.
+2. `npm ci` on **Node 22.19 fails** with `EBADENGINE` — `.npmrc` sets `engine-strict=true` and the dev dependency `lint-staged` requires Node `>=22.22.1`. Fixed by switching to **Node 24** (`nvm use 24`).
+3. Native modules (e.g. `re2`) are compiled per Node version, so the badge server must **run on the same Node version used to install**, or it crashes at startup with a `NODE_MODULE_VERSION` mismatch (`ERR_DLOPEN_FAILED`). Fixed by running the server on Node 24 too.
+
+**Why this reproduction is code/behavior based:** The reported symptom is "the build badge fails on a *private* Azure DevOps project even with a PAT configured." Reproducing that *literally* requires a private Azure org with a completed pipeline and a PAT — and Microsoft gates free CI parallelism behind a manual grant that can take several business days. The faithful, self-contained reproduction is therefore to demonstrate the *mechanism*: the build badge never attaches the configured PAT, while its sibling badges do.
+
+**Steps to reproduce:**
 
 ```
-1.
-2.
-3.
+Method A — code inspection (proves the missing-auth path; fully reproducible now):
+1. Open services/azure-devops/azure-devops-build.service.js. Line 38:
+   `class AzureDevOpsBuild extends BaseSvgScrapingService` — the SVG-scraper base, which
+   carries no auth config.
+2. In handle() (lines 110–132) it fetches
+   https://dev.azure.com/{org}/{projectId}/_apis/build/status/{definitionId}
+   via the helper imported on line 9.
+3. Open services/azure-devops/azure-devops-helpers.js, lines 16–18: the helper calls
+   serviceInstance._requestSvg(...) with NO authHelper — so no Authorization header is sent.
+4. Contrast services/azure-devops/azure-devops-coverage.service.js line 44
+   (`extends AzureDevOpsBase`) and azure-devops-base.js lines 16 + 23–24, which declare
+   `static auth = { passKey: 'azure_devops_token' }` and fetch with
+   this.authHelper.withBasicAuth(...) — the PAT IS attached.
+
+Method B — local runtime confirmation (to be captured as the reproduction commit):
+5. Start shields locally: `npm start` (badge server + docs frontend; the badge URL/port is
+   printed in the terminal).
+6. Render the build badge for the public example project from the badge's own docs:
+   /azure-devops/build/totodem/8cf3ec0e-d0c2-4fcd-8206-ad204f254a96/2.svg
+   -> renders `build | passing` and works ANONYMOUSLY (the example project is public).
+7. Configure a PAT via the `azure_devops_token` secret and re-request the same badge with
+   request logging (`npm run test:services:trace`) — the outbound request to
+   /_apis/build/status/... carries NO Authorization header, confirming the PAT is ignored
+   on the build path. (A nock-based unit test asserting "no auth header sent" will be the
+   committed reproduction artifact.)
 ```
 
-**Observed behavior:**
+**Observed behavior:** The Azure DevOps build badge fetches its data through `BaseSvgScrapingService._requestSvg` with no authentication. Even when `azure_devops_token` is configured, no `Authorization` header is sent, so any project that blocks anonymous access returns an error and the badge fails.
 
-**Expected behavior:**
+**Expected behavior:** Like the coverage / tests / release badges, the build badge should send the configured PAT (HTTP basic auth) so it can read build status for private projects.
 
-**Reproduction commit:** _(link to commit where you documented the reproduction)_
+**Reproduction commit:** [`fce9f6a`](https://github.com/azizu06/shields/commit/fce9f6a9868551e3c545860c2f6f28bc195c257e) — adds [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/reproduction.md)
 
 ### Root Cause Analysis
 
-_What did you find when tracing the code? Where does the bug originate or where does the missing feature need to be added? Be specific — file names and line numbers where applicable._
+The bug is **structural**, not a missing line inside one function. In shields, auth is attached based on *which base class a service extends and which `_request*` method it calls*:
+
+- **The build badge** (`services/azure-devops/azure-devops-build.service.js:38`) extends **`BaseSvgScrapingService`** and reads data by scraping Azure's native status *image* (`/_apis/build/status/{definitionId}`) through `azure-devops-helpers.js:18` → `_requestSvg(...)`. That path declares no `static auth` and never calls `authHelper`, so the PAT is never sent.
+- **Every other Azure DevOps badge** (coverage `:44`, tests, release) extends **`AzureDevOpsBase`** (`azure-devops-base.js:15`), which declares `static auth = { passKey: 'azure_devops_token', authorizedOrigins: ['https://dev.azure.com'] }` (`:16`) and fetches via `this._requestJson(this.authHelper.withBasicAuth(...))` (`:23–24`). Those badges send the PAT and work on private projects.
+
+The scraped image endpoint is an anonymous-only surface, so the badge can't simply have a header bolted on — it has to move onto the **authenticated JSON API**, which `AzureDevOpsBase` already partly implements: `getLatestCompletedBuildId()` (`azure-devops-base.js:33`) already queries the auth'd `/_apis/build/builds` endpoint.
+
+- **Primary file to change:** `services/azure-devops/azure-devops-build.service.js`
+- **Supporting:** `services/azure-devops/azure-devops-base.js` (reuse/extend); the scraper helper in `azure-devops-helpers.js` may become unused for builds.
 
 ### Solution Approach
 
-_Describe your implementation plan. What will you change, add, or remove? What are the tradeoffs of this approach vs. alternatives you considered?_
+Framed with the **UMPIRE** structure.
 
-**Implementation plan commit:** _(link to commit with your markdown plan)_
+**Understand:** The Azure DevOps build badge doesn't send the user's PAT, so it breaks on private projects. It should authenticate like the other Azure DevOps badges.
+
+**Match:** `AzureDevOpsCoverage` (`azure-devops-coverage.service.js`) is the working template — it `extends AzureDevOpsBase`, calls `getLatestCompletedBuildId(...)` (`:112`), then fetches an authenticated JSON endpoint (`:127`) and renders. The build badge should follow the same shape.
+
+**Plan:**
+1. Change `AzureDevOpsBuild` to `extends AzureDevOpsBase` so it inherits `static auth` + the authenticated `fetch`.
+2. Replace the SVG scrape with a JSON call to `GET /_apis/build/builds?definitions={definitionId}&$top=1&branchName=refs/heads/{branch}` (authenticated via the base `fetch`).
+3. Read `value[0].status` + `value[0].result`, map them to the existing build-status badge output (reuse `renderBuildStatusBadge` / the build-status mapping).
+4. **Decide `stage`/`job`** (currently lines 12–13 and 119–120): the builds-list API returns whole-build status only. **Tradeoff —** (a) replicate per-stage/job via Azure's **Timeline API** (`/_apis/build/builds/{buildId}/timeline`, which returns records typed `Stage`/`Job` with their own `result`), or (b) scope them out of this PR and raise it with the maintainer. Current lean: **(a)** to avoid regressing existing behavior, with (b) as a fallback if the maintainer prefers a smaller PR.
+5. Add `azure-devops-build.spec.js` — the build badge currently has only a `.tester.js`, no unit spec.
+
+**Implement:** _(Phase III)_ — on branch `fix-issue-10162` in `azizu06/shields`.
+
+**Review:** Self-review against shields' `CONTRIBUTING.md`: PRs are squash-merged (no need to pre-squash my own commits); **service changes must include tests**; the **PR title must tag the affected service in square brackets** so CI runs those service tests — e.g. `[AzureDevops] Use PAT auth for the build badge on private projects`. Commit messages/authorship are not amendable after merge.
+
+**Evaluate:** shields tests two ways and I'll use both — service tests (`azure-devops-build.tester.js`, run with `npm run test:services -- --only=azure-devops`, must keep ≥1 live "picture check") and unit tests (`*.spec.js` using `nock` to fake Azure). Specifically I'll: (1) add a `nock` unit test asserting `Authorization: Basic …` **is** sent when a token is configured (the inverse of the reproduction); (2) add unit tests mapping Azure `result` values (`succeeded` / `failed` / `canceled` / `partiallySucceeded`) to badge output; (3) keep a live picture-check test green; (4) run `npm test` to confirm no regressions. **No real Azure account needed** — `nock` supplies the fake responses.
+
+**Implementation plan commit:** [`1ce3d50`](https://github.com/azizu06/shields/commit/1ce3d503e692e158180769b974fe4169b4baf5d9) — adds [`codepath/plan.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/plan.md)
 
 ---
 
