@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Phase II — Reproduction & Solution Planning |
-| **Progress summary** | Cloned the fork and installed shields locally; traced the bug to the Azure DevOps **build** badge extending the no-auth scraper base class instead of the authenticated API base class its siblings use, and pinned the root cause to specific files/lines; wrote a UMPIRE migration plan. |
-| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Reproduction commit](https://github.com/azizu06/shields/commit/fce9f6a9868551e3c545860c2f6f28bc195c257e) · [Plan commit](https://github.com/azizu06/shields/commit/1ce3d503e692e158180769b974fe4169b4baf5d9) |
-| **Blockers / questions** | None blocking. One open design question: replicate the `stage`/`job` filters via Azure's Timeline API, or scope them out of this PR — will confirm with the maintainer. |
+| **Current phase** | Phase III — Solution Building |
+| **Progress summary** | Implemented the fix on branch `fix-issue-10162`. Migrated the Azure DevOps **build** badge off the no-auth SVG scraper onto the authenticated JSON REST API — so the PAT is now sent and the badge works on private projects — and restored full `stage`/`job` parity via Azure's Timeline API. All tests green: a new auth unit spec plus 11 service-test cases, with no regressions to the sibling Azure badges. |
+| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/53807a7bd8) · [Stage/job commit](https://github.com/azizu06/shields/commit/f82a69eade) · [Reproduction](https://github.com/azizu06/shields/commit/3e940eefab) · [Plan](https://github.com/azizu06/shields/commit/c35f39fb60) |
+| **Blockers / questions** | None blocking. Resolved the Phase II open question — kept `stage`/`job` parity via the Timeline API (the maintainer's stated concern was preserving existing functionality). One small, documented behavior change to raise in the PR: the JSON API can't distinguish "definition not found" from "user/project not found" the way the old image endpoint could, so those messages are consolidated — consistent with the sibling Azure badges. |
 
 ---
 
@@ -102,7 +102,7 @@ Method B — local runtime confirmation (to be captured as the reproduction comm
 
 **Expected behavior:** Like the coverage / tests / release badges, the build badge should send the configured PAT (HTTP basic auth) so it can read build status for private projects.
 
-**Reproduction commit:** [`fce9f6a`](https://github.com/azizu06/shields/commit/fce9f6a9868551e3c545860c2f6f28bc195c257e) — adds [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/reproduction.md)
+**Reproduction commit:** [`3e940ee`](https://github.com/azizu06/shields/commit/3e940eefab) — adds [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/reproduction.md)
 
 ### Root Cause Analysis
 
@@ -137,7 +137,7 @@ Framed with the **UMPIRE** structure.
 
 **Evaluate:** shields tests two ways and I'll use both — service tests (`azure-devops-build.tester.js`, run with `npm run test:services -- --only=azure-devops`, must keep ≥1 live "picture check") and unit tests (`*.spec.js` using `nock` to fake Azure). Specifically I'll: (1) add a `nock` unit test asserting `Authorization: Basic …` **is** sent when a token is configured (the inverse of the reproduction); (2) add unit tests mapping Azure `result` values (`succeeded` / `failed` / `canceled` / `partiallySucceeded`) to badge output; (3) keep a live picture-check test green; (4) run `npm test` to confirm no regressions. **No real Azure account needed** — `nock` supplies the fake responses.
 
-**Implementation plan commit:** [`1ce3d50`](https://github.com/azizu06/shields/commit/1ce3d503e692e158180769b974fe4169b4baf5d9) — adds [`codepath/plan.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/plan.md)
+**Implementation plan commit:** [`c35f39f`](https://github.com/azizu06/shields/commit/c35f39fb60) — adds [`codepath/plan.md`](https://github.com/azizu06/shields/blob/fix-issue-10162/codepath/plan.md)
 
 ---
 
@@ -147,27 +147,40 @@ Framed with the **UMPIRE** structure.
 
 ### WIP Branch
 
-- **Branch URL:**
-- **First commit date:**
-- **Most recent commit date:**
+- **Branch URL:** https://github.com/azizu06/shields/tree/fix-issue-10162
+- **First commit date:** 2026-06-12
+- **Most recent commit date:** 2026-06-21
 
 ### Implementation Notes
 
-_Running notes as you build. Update this as you make progress — what worked, what you had to change, and why._
+Built in two reviewable increments so the core fix stands on its own and the larger stage/job work is a separate, revertable commit.
 
 | Date | Note |
 |---|---|
-| | |
+| 2026-06-21 | **Increment 1 — the auth fix** (commit [`53807a7`](https://github.com/azizu06/shields/commit/53807a7bd8)). The whole bug is one line: changed `AzureDevOpsBuild` to `extends AzureDevOpsBase` (was `BaseSvgScrapingService`). That base class carries `static auth = { passKey: 'azure_devops_token' }` and runs every request through `withBasicAuth(...)`, so the PAT is now attached. Rewrote `handle()` to call the authenticated `/_apis/build/builds` JSON endpoint, read `value[0].result`, and translate Azure's result vocabulary into the existing `renderBuildStatusBadge` output. Added `azure-devops-build.spec.js` (the badge had no unit spec at all) asserting the PAT is sent — the direct inverse of the Phase II reproduction. |
+| 2026-06-21 | **Test parity cleanup.** Two old live tests (`unknown definition`, `unknown project`) were written for the old status-*image* endpoint. The JSON API redirects inaccessible resources to a sign-in page (verified: HTTP 302), so it genuinely cannot tell those two cases apart. Replaced them with a deterministic nock-mocked 404 test and a consolidated `user or project not found` message — exactly how the sibling coverage/tests badges are already tested. |
+| 2026-06-21 | **Increment 2 — stage/job parity** (commit [`f82a69e`](https://github.com/azizu06/shields/commit/f82a69eade)). The builds-list call returns whole-build status only, so to keep `?stage=`/`?job=` working I added a call to Azure's **Timeline API** (`/_apis/build/builds/{id}/timeline`) that finds the matching `Stage`/`Job` record and reads its own `result`. Confirmed two non-obvious facts against the live API before coding: the Timeline endpoint **rejects** the `api-version` the other endpoints require (404 with it, 200 without), and it uses different result words (`succeededWithIssues`, `skipped`) than the build-level call — both handled in the result map. |
+
+**Key challenge & how I solved it:** perfect error-message parity turned out to be impossible, and finding that out drove the design. The old badge scraped an anonymous status *image* that embedded text like "set up now"; the authenticated JSON API has no equivalent and bounces unauthenticated/unknown requests to a login page. So I worked empirically — `curl`'d the real Azure endpoints to see the actual responses (302 redirects, BOM-prefixed JSON, the api-version quirk) and let that evidence shape both the code and the tests, rather than guessing the API's behavior.
 
 ### Testing Strategy
 
-_What tests are you writing? Unit tests, integration tests, or both? What edge cases are you covering?_
+Wrote tests alongside the code, using both layers shields supports.
 
-**Test file(s):**
+- **Unit spec (`azure-devops-build.spec.js`, new):** `testAuth` asserts the badge sends `Authorization: Basic …` when a token is configured — the inverse of the Phase II reproduction. (Exercises the overall-build path so a single mocked request suffices.)
+- **Service tests (`azure-devops-build.tester.js`, updated):** kept the live "picture-check" cases green against the public `totodem/shields.io` project, and added **deterministic nock-mocked** cases that pin the new logic:
+  - overall build `succeeded` but the requested stage `failed` → badge must show **`failing`** (proves the Timeline lookup is used, not the whole-build result);
+  - a job returning `succeededWithIssues` → **`passing` / orange** (job precedence + timeline-specific mapping);
+  - a nonexistent stage → **`stage not found`**;
+  - a mocked 404 → **`user or project not found`**.
+- **Result:** 1 unit spec + 11 service-test cases pass; the sibling Azure badges' specs still pass (no regressions). No real Azure account needed — `nock` supplies the responses.
+  - Run: `npx cross-env NODE_CONFIG_ENV=test mocha core/service-test-runner/cli.js --only=AzureDevopsBuild` and `… mocha "services/azure-devops/*.spec.js"`.
+
+**Test file(s):** `services/azure-devops/azure-devops-build.spec.js` (new), `services/azure-devops/azure-devops-build.tester.js` (updated)
 
 ### Mentor Feedback Requests
 
-_Document any feedback you requested and received during this phase._
+_None requested yet this phase. Plan to raise the not-found-message consolidation with the maintainer in the Phase IV PR description._
 
 | Date | Question / request | Response |
 |---|---|---|
