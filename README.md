@@ -13,9 +13,9 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Phase III — Solution Building |
+| **Current phase** | Phase IV — Pull Request & Submission (PR open, awaiting review) |
 | **Progress summary** | Implemented the fix on branch `fix-issue-10162`. Migrated the Azure DevOps **build** badge off the no-auth SVG scraper onto the authenticated JSON REST API — so the PAT is now sent and the badge works on private projects — and restored full `stage`/`job` parity via Azure's Timeline API. All tests green: a new auth unit spec plus 11 service-test cases, with no regressions to the sibling Azure badges. |
-| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/53807a7bd8) · [Stage/job commit](https://github.com/azizu06/shields/commit/f82a69eade) · [Reproduction](https://github.com/azizu06/shields/commit/3e940eefab) · [Plan](https://github.com/azizu06/shields/commit/c35f39fb60) |
+| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/53807a7bd8) · [Stage/job commit](https://github.com/azizu06/shields/commit/f82a69eade) · [Reproduction](https://github.com/azizu06/shields/commit/3e940eefab) · [Plan](https://github.com/azizu06/shields/commit/c35f39fb60) · [**PR #11945**](https://github.com/badges/shields/pull/11945) |
 | **Blockers / questions** | None blocking. Resolved the Phase II open question — kept `stage`/`job` parity via the Timeline API (the maintainer's stated concern was preserving existing functionality). One small, documented behavior change to raise in the PR: the JSON API can't distinguish "definition not found" from "user/project not found" the way the old image endpoint could, so those messages are consolidated — consistent with the sibling Azure badges. |
 
 ---
@@ -194,22 +194,22 @@ _None requested yet this phase. Plan to raise the not-found-message consolidatio
 
 ### Pull Request
 
-- **PR URL:**
-- **PR title:**
-- **Submitted date:**
-- **Status:** Open / Changes requested / Merged
+- **PR URL:** https://github.com/badges/shields/pull/11945
+- **PR title:** `[AzureDevops] Make the build badge send the PAT so it works on private projects`
+- **Submitted date:** 2026-06-21
+- **Status:** Open — awaiting CI + maintainer review
 
 ### PR Description Summary
 
-_Summarize what your PR does, what issue it closes, and how you tested it. This mirrors what you wrote in the actual PR description._
+The build badge was the only Azure DevOps badge that didn't send the user's PAT, so it failed on private projects. It extended the no-auth SVG-scraper base while the siblings use the authenticated JSON REST API. The PR moves it onto that same authenticated path (`extends AzureDevOpsBase` + `/_apis/build/builds`) and keeps `stage`/`job` parity by reading the build's Timeline. Tested with a new auth unit spec plus mocked service tests for the stage/job logic, including one proving the stage result is read instead of the overall build. The description also flags one behavior change for the maintainer: the JSON API 302-redirects inaccessible resources, so "definition not found" can't be told apart from "user or project not found" and the two are consolidated — matching the sibling badges.
 
 ### Pre-submission Checklist
 
-- [ ] Code addresses the selected issue
-- [ ] Tests written and passing
-- [ ] Documentation follows the project's contribution guidelines
-- [ ] PR description explains the change clearly
-- [ ] Self-reviewed against the project's CONTRIBUTING.md
+- [x] Code addresses the selected issue
+- [x] Tests written and passing
+- [x] Documentation follows the project's contribution guidelines
+- [x] PR description explains the change clearly
+- [x] Self-reviewed against the project's CONTRIBUTING.md
 
 ### Maintainer Feedback Log
 
