@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Phase III — Solution Building |
-| **Progress summary** | Implemented the fix on branch `fix-issue-10162`. Migrated the Azure DevOps **build** badge off the no-auth SVG scraper onto the authenticated JSON REST API — so the PAT is now sent and the badge works on private projects — and restored full `stage`/`job` parity via Azure's Timeline API. All tests green: a new auth unit spec plus 11 service-test cases, with no regressions to the sibling Azure badges. |
-| **Deliverable links** | [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/75c5f41d67) · [Stage/job commit](https://github.com/azizu06/shields/commit/094a156d00) · [Reproduction](https://github.com/azizu06/shields/commit/3e940eefab) · [Plan](https://github.com/azizu06/shields/commit/c35f39fb60) |
-| **Blockers / questions** | None blocking. Resolved the Phase II open question — kept `stage`/`job` parity via the Timeline API (the maintainer's stated concern was preserving existing functionality). One small, documented behavior change to raise in the PR: the JSON API can't distinguish "definition not found" from "user/project not found" the way the old image endpoint could, so those messages are consolidated — consistent with the sibling Azure badges. |
+| **Current phase** | Phase IV — Pull Request & Submission |
+| **Progress summary** | Opened [PR #11945](https://github.com/badges/shields/pull/11945) to `badges/shields`. All CI is green (Main on Ubuntu and Windows, Services, Lint, E2E, Integration, Package CLI/Library across Node 20/22/24, Danger, Socket Security). The maintainer (PyvesB) responded and asked me to drop the temp planning files I'd accidentally committed, so I rebased them off the branch — the PR is now just the three `azure-devops` files — and replied on the thread. Waiting on the detailed code review now. |
+| **Deliverable links** | [PR #11945](https://github.com/badges/shields/pull/11945) · [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/75c5f41d67) · [Stage/job commit](https://github.com/azizu06/shields/commit/094a156d00) |
+| **Blockers / questions** | None blocking. The maintainer hasn't done the detailed code review yet, so there may be a second round of feedback to fold in. The one behavior change I flagged in the PR still stands: the JSON API can't tell "definition not found" apart from "user/project not found" the way the old image endpoint could, so those messages are consolidated to match the sibling Azure badges. |
 
 ---
 
@@ -194,22 +194,22 @@ _None requested yet this phase. Plan to raise the not-found-message consolidatio
 
 ### Pull Request
 
-- **PR URL:**
-- **PR title:**
-- **Submitted date:**
-- **Status:** Open / Changes requested / Merged
+- **PR URL:** https://github.com/badges/shields/pull/11945
+- **PR title:** [AzureDevops] Make the build badge send the PAT so it works on private projects
+- **Submitted date:** 2026-06-21
+- **Status:** Open
 
 ### PR Description Summary
 
-_Summarize what your PR does, what issue it closes, and how you tested it. This mirrors what you wrote in the actual PR description._
+This PR fixes #10162, where the Azure DevOps build badge ignored the configured PAT and broke on private projects. The build badge was the only Azure badge still scraping the anonymous status image instead of hitting the authenticated JSON API, so it never sent the token. I moved it onto `AzureDevOpsBase` like the coverage, tests, and release badges already do, so it reads the build result from `/_apis/build/builds` with the PAT attached, and kept the `stage`/`job` support working through Azure's Timeline API. I tested it with a new auth unit spec that proves the token is actually sent, plus 11 service-test cases (live and nock-mocked) covering the overall build, stage, job, never-built, and not-found paths. One behavior change I flagged in the PR: the JSON API can't tell "definition not found" apart from "user or project not found" the way the old image endpoint could, so I consolidated those two messages to match how the sibling Azure badges already behave.
 
 ### Pre-submission Checklist
 
-- [ ] Code addresses the selected issue
-- [ ] Tests written and passing
-- [ ] Documentation follows the project's contribution guidelines
-- [ ] PR description explains the change clearly
-- [ ] Self-reviewed against the project's CONTRIBUTING.md
+- [x] Code addresses the selected issue
+- [x] Tests written and passing
+- [x] Documentation follows the project's contribution guidelines
+- [x] PR description explains the change clearly
+- [x] Self-reviewed against the project's CONTRIBUTING.md
 
 ### Maintainer Feedback Log
 
@@ -217,7 +217,7 @@ _Log every round of review feedback and your response. This is evidence of profe
 
 | Date | Reviewer | Feedback | My response / commit |
 |---|---|---|---|
-| | | | |
+| 2026-06-21 | PyvesB (maintainer) | The temp AI planning files shouldn't be in the PR. | Rebased the 3 planning commits off `fix-issue-10162` so the PR is only the three `azure-devops` source/test files; preserved the planning docs on a separate `issue-10162-docs` branch; replied on the thread. |
 
 ---
 
@@ -227,4 +227,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
-| 1 | | | |
+| 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | Open — submitted, CI green, awaiting maintainer code review |
