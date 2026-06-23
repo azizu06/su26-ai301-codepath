@@ -33,7 +33,7 @@
 
 ### Problem Summary
 
-Shields.io generates live status badges for GitHub READMEs by fetching data from third-party APIs. It already supports Personal Access Token (PAT) authentication for several Azure DevOps badge types — coverage, test results, work items — but the build badge handler was written without PAT support. This means that when an organization's Azure DevOps instance is configured to block anonymous API requests (a standard enterprise security policy), the build badge silently fails while every other Azure DevOps badge on that same project works fine. The fix is to add PAT authentication to the build badge handler, following the pattern already established by the other Azure DevOps badge implementations in the same codebase.
+Shields.io generates live status badges for GitHub READMEs by fetching data from third-party APIs. It already supports Personal Access Token (PAT) authentication for several Azure DevOps badge types — coverage, test results, work items — but the build badge handler was written without PAT support. So when an organization's Azure DevOps instance blocks anonymous API requests, which is a standard enterprise security policy, the build badge silently fails while every other Azure DevOps badge on the same project keeps working. The fix is to add PAT authentication to the build badge handler, following the pattern already established by the other Azure DevOps badge implementations in the same codebase.
 
 ### Why I Chose This Issue
 
