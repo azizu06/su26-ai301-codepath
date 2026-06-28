@@ -14,9 +14,9 @@
 | Field | This Week |
 |---|---|
 | **Current phase** | Phase IV — Pull Request & Submission |
-| **Progress summary** | Opened [PR #11945](https://github.com/badges/shields/pull/11945) to `badges/shields`, all CI green. The maintainer (PyvesB) did a code review on 2026-06-28 with three points: align the not-found message with the sibling coverage/tests badges, prefer live not-found tests over a mocked one, and a question on whether the stage/job tests could be live. I addressed all three — switched the message and the no-completed-builds case to `build pipeline not found`, replaced the mocked 404 with live tests against `swellaby` like the sibling testers, kept the specific-outcome stage/job tests mocked (can't reproduce those on a public project), pushed commit `509bc0fd0b`, and replied. Awaiting re-review. |
+| **Progress summary** | [PR #11945](https://github.com/badges/shields/pull/11945) to `badges/shields` was **approved** by the maintainer (PyvesB) on 2026-06-28 ("Looks good to me, thanks for the contribution!"). His code review had three points — align the not-found message with the sibling coverage/tests badges, prefer live not-found tests over a mocked one, and a question on whether the stage/job tests could be live. I addressed all three: switched the message and the no-completed-builds case to `build pipeline not found`, replaced the mocked 404 with live tests against `swellaby` like the sibling testers, kept the specific-outcome stage/job tests mocked (no public fixture reproduces a failing stage), pushed commit `509bc0fd0b`, and replied. Approved with no further changes; now awaiting the maintainers' merge. |
 | **Deliverable links** | [PR #11945](https://github.com/badges/shields/pull/11945) · [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/75c5f41d67) · [Stage/job commit](https://github.com/azizu06/shields/commit/094a156d00) |
-| **Blockers / questions** | None blocking. The maintainer hasn't done the detailed code review yet, so there may be a second round of feedback to fold in. The one behavior change I flagged in the PR still stands: the JSON API can't tell "definition not found" apart from "user/project not found" the way the old image endpoint could, so those messages are consolidated to match the sibling Azure badges. |
+| **Blockers / questions** | None. The PR is approved with no requested changes; the only thing left is the maintainers merging it, which is on their side. |
 
 ---
 
@@ -197,7 +197,7 @@ _None requested yet this phase. Plan to raise the not-found-message consolidatio
 - **PR URL:** https://github.com/badges/shields/pull/11945
 - **PR title:** [AzureDevops] Make the build badge send the PAT so it works on private projects
 - **Submitted date:** 2026-06-21
-- **Status:** Open
+- **Status:** Approved by maintainer (awaiting merge)
 
 ### PR Description Summary
 
@@ -219,6 +219,7 @@ _Log every round of review feedback and your response. This is evidence of profe
 |---|---|---|---|
 | 2026-06-21 | PyvesB (maintainer) | The temp AI planning files shouldn't be in the PR. | Rebased the 3 planning commits off `fix-issue-10162` so the PR is only the three `azure-devops` source/test files; preserved the planning docs on a separate `issue-10162-docs` branch; replied on the thread. |
 | 2026-06-28 | PyvesB (maintainer) | Code review: use `build pipeline not found` to match the `AzureDevOpsCoverage`/`AzureDevOpsTests` badges; keep live not-found tests instead of the mocked 404; asked whether the stage/job tests could be live too. | Changed the message (and the no-completed-builds case) to `build pipeline not found`; replaced the mocked 404 with live tests against `swellaby` like the sibling testers; left the specific-outcome stage/job tests mocked and explained that they can't be reproduced against a public project. Commit `509bc0fd0b`; replied on the thread. |
+| 2026-06-28 | PyvesB (maintainer) | **Approved** the PR: "Looks good to me, thanks for the contribution!" No further changes requested. | No code changes needed. Awaiting the maintainers' merge. |
 
 ---
 
@@ -228,4 +229,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
-| 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | Open — submitted, CI green, awaiting maintainer code review |
+| 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | Approved by maintainer (awaiting merge) — review feedback addressed, CI green |
