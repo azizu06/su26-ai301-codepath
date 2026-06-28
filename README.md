@@ -13,48 +13,155 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Phase IV — Pull Request & Submission |
-| **Progress summary** | [PR #11945](https://github.com/badges/shields/pull/11945) to `badges/shields` was **merged into `master`** by the maintainer (PyvesB) on 2026-06-28 (merge commit `2b58f5b`). Before approving, his code review had three points — align the not-found message with the sibling coverage/tests badges, prefer live not-found tests over a mocked one, and a question on whether the stage/job tests could be live. I addressed all three: switched the message and the no-completed-builds case to `build pipeline not found`, replaced the mocked 404 with live tests against `swellaby` like the sibling testers, kept the specific-outcome stage/job tests mocked (no public fixture reproduces a failing stage), pushed commit `509bc0fd0b`, and replied. The contribution cycle is complete. |
-| **Deliverable links** | [PR #11945](https://github.com/badges/shields/pull/11945) · [Issue #10162](https://github.com/badges/shields/issues/10162) · [Fork](https://github.com/azizu06/shields) · [Branch `fix-issue-10162`](https://github.com/azizu06/shields/tree/fix-issue-10162) · [Auth-fix commit](https://github.com/azizu06/shields/commit/75c5f41d67) · [Stage/job commit](https://github.com/azizu06/shields/commit/094a156d00) |
-| **Blockers / questions** | None. The PR is merged into `master` and the contribution cycle is complete. |
+| **Current phase** | Cycle 2 · Phase I — Issue Selection |
+| **Progress summary** | Cycle 1 is done. The Azure DevOps build badge fix ([#10162](https://github.com/badges/shields/issues/10162) / [PR #11945](https://github.com/badges/shields/pull/11945)) was merged into `master` on 2026-06-28. Started Cycle 2 by selecting and claiming [issue #11286](https://github.com/badges/shields/issues/11286), which adds an option to exclude draft PRs from the GitHub issues-or-pull-requests badge count. I commented on the issue to claim it; next up is reproduction and a solution plan in Phase II. |
+| **Deliverable links** | Cycle 2: [Issue #11286](https://github.com/badges/shields/issues/11286) · [Claim comment](https://github.com/badges/shields/issues/11286#issuecomment-4827478285) · [Fork](https://github.com/azizu06/shields) — Cycle 1 (merged): [Issue #10162](https://github.com/badges/shields/issues/10162) · [PR #11945](https://github.com/badges/shields/pull/11945) |
+| **Blockers / questions** | None. Cycle 1 merged; Cycle 2 just started. |
 
 ---
 
-## Phase I — Issue Selection
+## Cycle 2 — Issue #11286 (current)
+
+### Phase I — Issue Selection
 
 > **Completion signal:** Issue link + problem summary + cohort ledger entry
 
-### Selected Issue
+#### Selected Issue
+
+- **Repository:** [badges/shields](https://github.com/badges/shields)
+- **Issue URL:** https://github.com/badges/shields/issues/11286
+- **Issue title:** Option to exclude drafts from PR counts
+- **Labels / tags:** `service-badge`
+
+#### Problem Summary
+
+shields' GitHub issues-or-pull-requests badge (the badge behind https://shields.io/badges/git-hub-issues-or-pull-requests) counts open pull requests but includes drafts in the total. There's no way to leave drafts out, so the count can overstate how many pull requests are actually ready for review. The fix is to add an optional query parameter to that badge so a user can ask for a count that excludes drafts, using the draft field the GitHub API already returns.
+
+#### Why I Chose This Issue
+
+It's the highest-ROI follow-up to my first contribution. It enhances an existing, heavily used GitHub badge rather than adding a brand-new one, so the infrastructure and API path are already proven and the risk of it not merging is low. It's also the same shape of work I just shipped on the Azure DevOps badge, adding an optional query parameter that filters what an existing badge reports, so I can reuse that experience directly. The issue is recent, unassigned, has no open PR, and is scoped small enough for a quick clean second merge while I build a track record in the repo.
+
+#### Cohort Issue Ledger Entry
+
+- [ ] Entered in cohort issue ledger
+
+### Phase II — Reproduction & Solution Planning
+
+> **Completion signal:** Forked repo with 2+ starter commits — a reproduction comment and a markdown project plan
+
+#### Repository Fork
+
+- **Fork URL:** https://github.com/azizu06/shields (existing fork, reused from Cycle 1)
+- **Local setup completed:** Yes — same local clone and Node 24 toolchain from Cycle 1.
+
+#### Reproduction
+
+_To be completed in Phase II._
+
+#### Root Cause Analysis
+
+_To be completed in Phase II._
+
+#### Solution Approach
+
+_To be completed in Phase II (UMPIRE)._
+
+### Phase III — Solution Building
+
+> **Completion signal:** WIP branch with active daily commits
+
+#### WIP Branch
+
+- **Branch URL:**
+- **First commit date:**
+- **Most recent commit date:**
+
+#### Implementation Notes
+
+_To be completed in Phase III._
+
+| Date | Note |
+|---|---|
+| | |
+
+#### Testing Strategy
+
+_To be completed in Phase III._
+
+#### Mentor Feedback Requests
+
+| Date | Question / request | Response |
+|---|---|---|
+| | | |
+
+### Phase IV — Pull Request & Submission
+
+> **Completion signal:** Submitted PR + evidence of maintainer communication
+
+#### Pull Request
+
+- **PR URL:**
+- **PR title:**
+- **Submitted date:**
+- **Status:** Open / Changes requested / Merged
+
+#### PR Description Summary
+
+_To be completed in Phase IV._
+
+#### Pre-submission Checklist
+
+- [ ] Code addresses the selected issue
+- [ ] Tests written and passing
+- [ ] Documentation follows the project's contribution guidelines
+- [ ] PR description explains the change clearly
+- [ ] Self-reviewed against the project's CONTRIBUTING.md
+
+#### Maintainer Feedback Log
+
+_Log every round of review feedback and your response. This is evidence of professional iteration._
+
+| Date | Reviewer | Feedback | My response / commit |
+|---|---|---|---|
+| | | | |
+
+---
+
+## Cycle 1 — Issue #10162 (Merged, archived)
+
+### Phase I — Issue Selection
+
+> **Completion signal:** Issue link + problem summary + cohort ledger entry
+
+#### Selected Issue
 
 - **Repository:** [badges/shields](https://github.com/badges/shields)
 - **Issue URL:** https://github.com/badges/shields/issues/10162
 - **Issue title:** Azure DevOps - Build Badge - PAT Token not used on private projects
 - **Labels / tags:** `good first issue`, `service-badge`
 
-### Problem Summary
+#### Problem Summary
 
 Shields.io generates live status badges for GitHub READMEs by fetching data from third-party APIs. It already supports Personal Access Token (PAT) authentication for several Azure DevOps badge types — coverage, test results, work items — but the build badge handler was written without PAT support. So when an organization's Azure DevOps instance blocks anonymous API requests, which is a standard enterprise security policy, the build badge silently fails while every other Azure DevOps badge on the same project keeps working. The fix is to add PAT authentication to the build badge handler, following the pattern already established by the other Azure DevOps badge implementations in the same codebase.
 
-### Why I Chose This Issue
+#### Why I Chose This Issue
 
 The fix path is clearly defined — the codebase already has working PAT authentication in neighboring Azure DevOps service files, so the work is understanding that existing pattern and applying it consistently to the build badge. The project is JavaScript/Node.js, which aligns with my stack. Shields.io is one of the most widely used developer infrastructure tools in open source, so a merged contribution carries real visibility and portfolio value. The issue is labeled `good first issue`, has no assignee, and has no open pull requests — it is available, scoped appropriately for a 3–4 week cycle, and the project has strong contributor documentation and an active community.
 
-### Cohort Issue Ledger Entry
+#### Cohort Issue Ledger Entry
 
 - [x] Entered in cohort issue ledger
 
----
-
-## Phase II — Reproduction & Solution Planning
+### Phase II — Reproduction & Solution Planning
 
 > **Completion signal:** Forked repo with 2+ starter commits — a reproduction comment and a markdown project plan
 
-### Repository Fork
+#### Repository Fork
 
 - **Fork URL:** https://github.com/azizu06/shields
 - **Local setup completed:** **Yes** — cloned the fork, `npm ci` completed with no errors, dev server runs.
 
-### Reproduction
+#### Reproduction
 
 **Environment:**
 - **OS:** macOS (Apple Silicon), Darwin 25.5
@@ -104,7 +211,7 @@ Method B — local runtime confirmation (to be captured as the reproduction comm
 
 **Reproduction commit:** [`3e940ee`](https://github.com/azizu06/shields/commit/3e940eefab) — adds [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/issue-10162-docs/codepath/reproduction.md)
 
-### Root Cause Analysis
+#### Root Cause Analysis
 
 The bug is **structural**, not a missing line inside one function. In shields, auth is attached based on *which base class a service extends and which `_request*` method it calls*:
 
@@ -116,7 +223,7 @@ The scraped image endpoint is an anonymous-only surface, so the badge can't simp
 - **Primary file to change:** `services/azure-devops/azure-devops-build.service.js`
 - **Supporting:** `services/azure-devops/azure-devops-base.js` (reuse/extend); the scraper helper in `azure-devops-helpers.js` may become unused for builds.
 
-### Solution Approach
+#### Solution Approach
 
 Framed with the **UMPIRE** structure.
 
@@ -139,19 +246,17 @@ Framed with the **UMPIRE** structure.
 
 **Implementation plan commit:** [`c35f39f`](https://github.com/azizu06/shields/commit/c35f39fb60) — adds [`codepath/plan.md`](https://github.com/azizu06/shields/blob/issue-10162-docs/codepath/plan.md)
 
----
-
-## Phase III — Solution Building
+### Phase III — Solution Building
 
 > **Completion signal:** WIP branch with active daily commits
 
-### WIP Branch
+#### WIP Branch
 
 - **Branch URL:** https://github.com/azizu06/shields/tree/fix-issue-10162
 - **First commit date:** 2026-06-12
-- **Most recent commit date:** 2026-06-21
+- **Most recent commit date:** 2026-06-28
 
-### Implementation Notes
+#### Implementation Notes
 
 Built in two reviewable increments so the core fix stands on its own and the larger stage/job work is a separate, revertable commit.
 
@@ -160,50 +265,49 @@ Built in two reviewable increments so the core fix stands on its own and the lar
 | 2026-06-21 | **Increment 1 — the auth fix** (commit [`75c5f41`](https://github.com/azizu06/shields/commit/75c5f41d67)). The whole bug is one line: changed `AzureDevOpsBuild` to `extends AzureDevOpsBase` (was `BaseSvgScrapingService`). That base class carries `static auth = { passKey: 'azure_devops_token' }` and runs every request through `withBasicAuth(...)`, so the PAT is now attached. Rewrote `handle()` to call the authenticated `/_apis/build/builds` JSON endpoint, read `value[0].result`, and translate Azure's result vocabulary into the existing `renderBuildStatusBadge` output. Added `azure-devops-build.spec.js` (the badge had no unit spec at all) asserting the PAT is sent — the direct inverse of the Phase II reproduction. |
 | 2026-06-21 | **Test parity cleanup.** Two old live tests (`unknown definition`, `unknown project`) were written for the old status-*image* endpoint. The JSON API redirects inaccessible resources to a sign-in page (verified: HTTP 302), so it genuinely cannot tell those two cases apart. Replaced them with a deterministic nock-mocked 404 test and a consolidated `user or project not found` message — exactly how the sibling coverage/tests badges are already tested. |
 | 2026-06-21 | **Increment 2 — stage/job parity** (commit [`094a156`](https://github.com/azizu06/shields/commit/094a156d00)). The builds-list call returns whole-build status only, so to keep `?stage=`/`?job=` working I added a call to Azure's **Timeline API** (`/_apis/build/builds/{id}/timeline`) that finds the matching `Stage`/`Job` record and reads its own `result`. Confirmed two non-obvious facts against the live API before coding: the Timeline endpoint **rejects** the `api-version` the other endpoints require (404 with it, 200 without), and it uses different result words (`succeededWithIssues`, `skipped`) than the build-level call — both handled in the result map. |
+| 2026-06-28 | **Review feedback round** (commit [`509bc0f`](https://github.com/azizu06/shields/commit/509bc0fd0b)). Per the maintainer's code review, aligned the not-found message with the sibling badges: switched to `build pipeline not found` and treated a pipeline with no completed builds the same way (dropped the earlier `never built` text). Replaced the mocked 404 test with live not-found tests against the public `swellaby` org, matching how the coverage/tests testers already do it. |
 
 **Key challenge & how I solved it:** perfect error-message parity turned out to be impossible, and finding that out drove the design. The old badge scraped an anonymous status *image* that embedded text like "set up now"; the authenticated JSON API has no equivalent and bounces unauthenticated/unknown requests to a login page. So I worked empirically — `curl`'d the real Azure endpoints to see the actual responses (302 redirects, BOM-prefixed JSON, the api-version quirk) and let that evidence shape both the code and the tests, rather than guessing the API's behavior.
 
-### Testing Strategy
+#### Testing Strategy
 
 Wrote tests alongside the code, using both layers shields supports.
 
 - **Unit spec (`azure-devops-build.spec.js`, new):** `testAuth` asserts the badge sends `Authorization: Basic …` when a token is configured — the inverse of the Phase II reproduction. (Exercises the overall-build path so a single mocked request suffices.)
-- **Service tests (`azure-devops-build.tester.js`, updated):** kept the live "picture-check" cases green against the public `totodem/shields.io` project, and added **deterministic nock-mocked** cases that pin the new logic:
+- **Service tests (`azure-devops-build.tester.js`, updated):** kept the live "picture-check" cases green against the public `totodem/shields.io` project, with live not-found tests against `swellaby` and **deterministic nock-mocked** cases that pin the new logic:
   - overall build `succeeded` but the requested stage `failed` → badge must show **`failing`** (proves the Timeline lookup is used, not the whole-build result);
   - a job returning `succeededWithIssues` → **`passing` / orange** (job precedence + timeline-specific mapping);
   - a nonexistent stage → **`stage not found`**;
-  - a mocked 404 → **`user or project not found`**.
-- **Result:** 1 unit spec + 11 service-test cases pass; the sibling Azure badges' specs still pass (no regressions). No real Azure account needed — `nock` supplies the responses.
+  - an unknown pipeline / bad project → **`build pipeline not found`** (live).
+- **Result:** 1 unit spec + service-test cases pass; the sibling Azure badges' specs still pass (no regressions). No real Azure account needed — `nock` supplies the responses.
   - Run: `npx cross-env NODE_CONFIG_ENV=test mocha core/service-test-runner/cli.js --only=AzureDevopsBuild` and `… mocha "services/azure-devops/*.spec.js"`.
 
 **Test file(s):** `services/azure-devops/azure-devops-build.spec.js` (new), `services/azure-devops/azure-devops-build.tester.js` (updated)
 
-### Mentor Feedback Requests
+#### Mentor Feedback Requests
 
-_None requested yet this phase. Plan to raise the not-found-message consolidation with the maintainer in the Phase IV PR description._
+_None requested this phase. Raised the not-found-message consolidation with the maintainer in the Phase IV PR description instead._
 
 | Date | Question / request | Response |
 |---|---|---|
 | | | |
 
----
-
-## Phase IV — Pull Request & Submission
+### Phase IV — Pull Request & Submission
 
 > **Completion signal:** Submitted PR + evidence of maintainer communication
 
-### Pull Request
+#### Pull Request
 
 - **PR URL:** https://github.com/badges/shields/pull/11945
 - **PR title:** [AzureDevops] Make the build badge send the PAT so it works on private projects
 - **Submitted date:** 2026-06-21
 - **Status:** Merged
 
-### PR Description Summary
+#### PR Description Summary
 
-This PR fixes #10162, where the Azure DevOps build badge ignored the configured PAT and broke on private projects. The build badge was the only Azure badge still scraping the anonymous status image instead of hitting the authenticated JSON API, so it never sent the token. I moved it onto `AzureDevOpsBase` like the coverage, tests, and release badges already do, so it reads the build result from `/_apis/build/builds` with the PAT attached, and kept the `stage`/`job` support working through Azure's Timeline API. I tested it with a new auth unit spec that proves the token is actually sent, plus 11 service-test cases (live and nock-mocked) covering the overall build, stage, job, never-built, and not-found paths. One behavior change I flagged in the PR: the JSON API can't tell "definition not found" apart from "user or project not found" the way the old image endpoint could, so I consolidated those two messages to match how the sibling Azure badges already behave.
+This PR fixes #10162, where the Azure DevOps build badge ignored the configured PAT and broke on private projects. The build badge was the only Azure badge still scraping the anonymous status image instead of hitting the authenticated JSON API, so it never sent the token. I moved it onto `AzureDevOpsBase` like the coverage, tests, and release badges already do, so it reads the build result from `/_apis/build/builds` with the PAT attached, and kept the `stage`/`job` support working through Azure's Timeline API. I tested it with a new auth unit spec that proves the token is actually sent, plus service-test cases (live and nock-mocked) covering the overall build, stage, job, and not-found paths. One behavior change I flagged in the PR: the JSON API can't tell "definition not found" apart from "user or project not found" the way the old image endpoint could, so I consolidated those two messages to match how the sibling Azure badges already behave.
 
-### Pre-submission Checklist
+#### Pre-submission Checklist
 
 - [x] Code addresses the selected issue
 - [x] Tests written and passing
@@ -211,7 +315,7 @@ This PR fixes #10162, where the Azure DevOps build badge ignored the configured 
 - [x] PR description explains the change clearly
 - [x] Self-reviewed against the project's CONTRIBUTING.md
 
-### Maintainer Feedback Log
+#### Maintainer Feedback Log
 
 _Log every round of review feedback and your response. This is evidence of professional iteration._
 
@@ -231,3 +335,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
+| 2 | [#11286](https://github.com/badges/shields/issues/11286) | _pending_ | In progress — Phase I (issue selected and claimed) |
