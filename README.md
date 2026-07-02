@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase I — Issue Selection |
-| **Progress summary** | Cycle 1 is done. The Azure DevOps build badge fix ([#10162](https://github.com/badges/shields/issues/10162) / [PR #11945](https://github.com/badges/shields/pull/11945)) was merged into `master` on 2026-06-28. Started Cycle 2 by selecting and claiming [issue #11286](https://github.com/badges/shields/issues/11286), which adds an option to exclude draft PRs from the GitHub issues-or-pull-requests badge count. I commented on the issue to claim it; next up is reproduction and a solution plan in Phase II. |
-| **Deliverable links** | Cycle 2: [Issue #11286](https://github.com/badges/shields/issues/11286) · [Claim comment](https://github.com/badges/shields/issues/11286#issuecomment-4827478285) · [Fork](https://github.com/azizu06/shields) — Cycle 1 (merged): [Issue #10162](https://github.com/badges/shields/issues/10162) · [PR #11945](https://github.com/badges/shields/pull/11945) |
-| **Blockers / questions** | None. Cycle 1 merged; Cycle 2 just started. |
+| **Current phase** | Cycle 2 · Phase I — Issue Selection (problem comprehension) |
+| **Progress summary** | Still in Phase I on [issue #11286](https://github.com/badges/shields/issues/11286), and this week reshaped my understanding of what the issue actually is. After I claimed it, maintainer PyvesB replied and pointed me at a previously-closed attempt, [PR #11401](https://github.com/badges/shields/pull/11401), and its review. I read that PR and the maintainer's [review comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871): the wanted change is not "add a draft param to the existing badge." It is to **split the combined `GitHubIssues` badge into two** — keep `GitHubIssues` for the issue variants (existing `repository` query) and add a new `GitHubPullRequests` badge for the PR variants plus the new `excludeDrafts` / `onlyDrafts` options (switched to the `search` query). I worked out why: only PRs have drafts, so a draft option only makes sense on a PR-only badge, and only the `search` query can filter a count by draft state (`draft:true`/`draft:false`) — the `repository` query returns a fixed count with no draft filter. Next up is Phase II: reproduce locally and write the UMPIRE plan for the split. |
+| **Deliverable links** | Cycle 2: [Issue #11286](https://github.com/badges/shields/issues/11286) · [Claim comment](https://github.com/badges/shields/issues/11286#issuecomment-4827478285) · [Maintainer reply](https://github.com/badges/shields/issues/11286#issuecomment-4828059214) · [Prior closed PR #11401](https://github.com/badges/shields/pull/11401) · [Maintainer roadmap comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) · [Fork](https://github.com/azizu06/shields) — Cycle 1 (merged): [Issue #10162](https://github.com/badges/shields/issues/10162) · [PR #11945](https://github.com/badges/shields/pull/11945) |
+| **Blockers / questions** | No blockers. Note: scope grew from a small param add into a badge split, so this cycle is larger than Cycle 1. When I open the PR I'll add a co-author trailer crediting the original PR #11401 author (feloy), as the maintainer requested. |
 
 ---
 
@@ -35,11 +35,24 @@
 
 #### Problem Summary
 
-shields' GitHub issues-or-pull-requests badge (the badge behind https://shields.io/badges/git-hub-issues-or-pull-requests) counts open pull requests but includes drafts in the total. There's no way to leave drafts out, so the count can overstate how many pull requests are actually ready for review. The fix is to add an optional query parameter to that badge so a user can ask for a count that excludes drafts, using the draft field the GitHub API already returns.
+shields' GitHub issues-or-pull-requests badge (the badge behind https://shields.io/badges/git-hub-issues-or-pull-requests) counts open pull requests but includes drafts in the total. There's no way to leave drafts out, so the count can overstate how many pull requests are actually ready for review.
+
+The issue as written asks for "an option to exclude drafts," but the maintainer reshaped the real scope during review of the prior attempt (see the Maintainer Guidance section below). The wanted change is to **split the combined `GitHubIssues` badge into two badges**: `GitHubIssues` keeps the issue variants (`issues`, `issues-raw`, `issues-closed`, `issues-closed-raw`) on the existing `repository` query, and a new `GitHubPullRequests` badge holds the PR variants (`issues-pr`, `issues-pr-raw`, `issues-pr-closed`, `issues-pr-closed-raw`) plus the new `excludeDrafts` / `onlyDrafts` options, backed by the GitHub `search` query. Reasoning: only PRs can be drafts, so a draft option belongs only on a PR badge; and only the `search` query supports a `draft:` filter, so counting non-draft PRs is impossible on the `repository` query the badge uses today.
 
 #### Why I Chose This Issue
 
-It's the highest-ROI follow-up to my first contribution. It enhances an existing, heavily used GitHub badge rather than adding a brand-new one, so the infrastructure and API path are already proven and the risk of it not merging is low. It's also the same shape of work I just shipped on the Azure DevOps badge, adding an optional query parameter that filters what an existing badge reports, so I can reuse that experience directly. The issue is recent, unassigned, has no open PR, and is scoped small enough for a quick clean second merge while I build a track record in the repo.
+It's the highest-ROI follow-up to my first contribution. It enhances an existing, heavily used GitHub badge rather than adding a brand-new one, so the infrastructure and API path are already proven. It's also adjacent to the work I just shipped on the Azure DevOps badge (changing how an existing badge counts and filters what it reports), so I can reuse that experience directly. The issue is recent, unassigned, and had no open PR when I claimed it.
+
+**Scope note (updated this week):** at selection time I read this as a small optional-param add. The maintainer's review reshaped it into a badge split (see below), so it's a larger, more architectural task than Cycle 1. I'm keeping it: the point of this cycle is to learn, and a badge split with an API-query migration teaches more than another param add — while still being well-scoped because the maintainer already laid out the target design.
+
+#### Maintainer Guidance & Reshaped Scope
+
+The maintainer's [reply on the issue](https://github.com/badges/shields/issues/11286#issuecomment-4828059214) pointed me to a prior, now-closed attempt, [PR #11401](https://github.com/badges/shields/pull/11401) by feloy, and told me to use its review comments as the starting point. Reading that PR and its review is where the real requirements live:
+
+- feloy's original PR added `excludeDrafts` and `onlyDrafts` params onto the existing combined badge. The maintainer didn't reject the idea, he rejected the shape, then the PR went stale for ~6 months and was auto-closed on 2026-06-27.
+- The maintainer's [roadmap comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) is the actual spec: "draft issues" aren't a real concept, so don't add draft terminology to a badge that also counts issues. Instead **split** the badge — `GitHubIssues` stays as-is on the `repository` query; a new `GitHubPullRequests` badge takes the PR variants and the new draft options and uses the `search` query for all of them.
+- Why `search` and not `repository`: the `repository` query returns a fixed pre-aggregated count with no way to condition on draft state. The `search` query accepts qualifiers (`is:pr is:open draft:false` / `draft:true`), so it's the only one that can count non-draft PRs. Putting *all* PR cases on `search` (not just the filtered ones) keeps a single source of truth and avoids two code paths drifting.
+- **Attribution:** the maintainer asked whoever picks this up to fetch feloy's commits (`git fetch origin pull/11401/head:pr-11401`) and include a co-author trailer crediting feloy. I'll do that on the eventual PR.
 
 #### Cohort Issue Ledger Entry
 
@@ -335,4 +348,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
-| 2 | [#11286](https://github.com/badges/shields/issues/11286) | _pending_ | In progress — Phase I (issue selected and claimed) |
+| 2 | [#11286](https://github.com/badges/shields/issues/11286) | _pending_ | In progress — Phase I (claimed; scope reshaped by maintainer into a `GitHubIssues` / `GitHubPullRequests` badge split) |
