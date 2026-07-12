@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase I — Issue Selection (problem comprehension) |
-| **Progress summary** | Still in Phase I on [issue #11286](https://github.com/badges/shields/issues/11286), and this week reshaped my understanding of what the issue actually is. After I claimed it, maintainer PyvesB replied and pointed me at a previously-closed attempt, [PR #11401](https://github.com/badges/shields/pull/11401), and its review. I read that PR and the maintainer's [review comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871): the wanted change is not "add a draft param to the existing badge." It is to **split the combined `GitHubIssues` badge into two** — keep `GitHubIssues` for the issue variants (existing `repository` query) and add a new `GitHubPullRequests` badge for the PR variants plus the new `excludeDrafts` / `onlyDrafts` options (switched to the `search` query). I worked out why: only PRs have drafts, so a draft option only makes sense on a PR-only badge, and only the `search` query can filter a count by draft state (`draft:true`/`draft:false`) — the `repository` query returns a fixed count with no draft filter. Next up is Phase II: reproduce locally and write the UMPIRE plan for the split. |
-| **Deliverable links** | Cycle 2: [Issue #11286](https://github.com/badges/shields/issues/11286) · [Claim comment](https://github.com/badges/shields/issues/11286#issuecomment-4827478285) · [Maintainer reply](https://github.com/badges/shields/issues/11286#issuecomment-4828059214) · [Prior closed PR #11401](https://github.com/badges/shields/pull/11401) · [Maintainer roadmap comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) · [Fork](https://github.com/azizu06/shields) — Cycle 1 (merged): [Issue #10162](https://github.com/badges/shields/issues/10162) · [PR #11945](https://github.com/badges/shields/pull/11945) |
-| **Blockers / questions** | No blockers. Note: scope grew from a small param add into a badge split, so this cycle is larger than Cycle 1. When I open the PR I'll add a co-author trailer crediting the original PR #11401 author (feloy), as the maintainer requested. |
+| **Current phase** | Cycle 2 · Phase II — Reproduction and Solution Planning (technical artifacts complete, Course Portal check-in pending) |
+| **Progress summary** | Reproduced issue #11286 against the live `badges/shields` PR badge. The normal request and `?excludeDrafts` both returned 26 open PRs while GitHub search showed 19 non-drafts and 7 drafts, which confirmed that Shields ignores the proposed parameter today. I traced that behavior through `GithubIssues.route`, `handle()`, and `fetch()`, then wrote a UMPIRE plan around the maintainer-requested `GitHubIssues` / `GitHubPullRequests` split. |
+| **Deliverable links** | [Phase II branch](https://github.com/azizu06/shields/tree/issue-11286-docs) · [Reproduction commit `46dc6bc177`](https://github.com/azizu06/shields/commit/46dc6bc177) · [Reproduction document](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [Plan commit `d3a6b7ea0b`](https://github.com/azizu06/shields/commit/d3a6b7ea0b) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Maintainer roadmap](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) |
+| **Blockers / questions** | No technical blockers. I still need to submit the Course Portal check-in with Phase II Complete marked. Before Phase III I also want to confirm whether maintainers prefer mutually exclusive validation when both `excludeDrafts` and `onlyDrafts` are supplied. |
 
 ---
 
@@ -65,19 +65,64 @@ The maintainer's [reply on the issue](https://github.com/badges/shields/issues/1
 #### Repository Fork
 
 - **Fork URL:** https://github.com/azizu06/shields (existing fork, reused from Cycle 1)
-- **Local setup completed:** Yes — same local clone and Node 24 toolchain from Cycle 1.
+- **Working branch:** https://github.com/azizu06/shields/tree/issue-11286-docs
+- **Local setup completed:** **Yes.** I fetched the latest `upstream/master`, created a separate worktree for issue #11286, switched to Node.js v24.15.0 through nvm, and ran `npm ci` successfully.
+- **Setup approach:** I reused the fork from Cycle 1 but did not reuse its working branch. The existing checkout was still on the merged `fix-issue-10162` branch and had unrelated untracked files, so I created `issue-11286-docs` from current upstream commit `aa75efb72e`. This keeps the Phase II course files out of both the old branch and the eventual code PR.
+- **Setup challenges:** `npm ci` completed, but printed upstream dependency deprecation warnings and reported existing audit findings. I left those untouched because dependency upgrades are outside issue #11286. The separate worktree also avoids accidentally mixing the generated files from my first contribution cycle into this one.
 
 #### Reproduction
 
-_To be completed in Phase II._
+I reproduced the issue using the live `badges/shields` badge and GitHub search on July 12, 2026.
+
+1. Requested `/github/issues-pr/badges/shields.json` and got `26 open`.
+2. Requested the same badge with `?excludeDrafts` and still got `26 open`.
+3. Queried GitHub search for the same repository and state. It reported 7 open drafts and 19 open non-drafts.
+
+**Observed behavior:** The normal request and the request with `?excludeDrafts` returned the same count even though the repository had open draft PRs.
+
+**Expected behavior:** The unfiltered badge should report all 26 open PRs. The request with `?excludeDrafts` should report only the 19 open non-draft PRs.
+
+The exact live counts can change, so the repeatable check is that the two badge responses stay equal while GitHub search confirms at least one open draft.
+
+**Full reproduction:** [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md)
+
+**Reproduction commit:** [`46dc6bc177`](https://github.com/azizu06/shields/commit/46dc6bc177)
 
 #### Root Cause Analysis
 
-_To be completed in Phase II._
+The current combined service never processes a draft filter. `GithubIssues.route` in `services/github/github-issues.service.js` declares the path variants but has no `queryParamSchema`. `handle()` receives only `variant`, `user`, `repo`, and `label`, then passes the derived `isPR` and `isClosed` flags to `fetch()`. There is no `excludeDrafts` or `onlyDrafts` value anywhere in that path.
+
+For PR variants, `fetch()` calls GraphQL's `repository.pullRequests(states:, labels:)` field and returns `totalCount`. An open PR can also be a draft, and that connection has no draft filter, so every matching open draft stays in the total. Shields' base service passes an empty service-query-parameter object when a route has no query schema, which is why adding `?excludeDrafts` is ignored instead of changing the GitHub request.
+
+The missing feature therefore cannot be fixed only by adding another argument to the existing `pullRequests` call. GitHub's search query supports `draft:false` and `draft:true`, so the PR variants need a search-based data path.
+
+**Files and functions involved:**
+
+- `services/github/github-issues.service.js`: `route`, `fetch()`, and `handle()`
+- `core/base-service/base.js`: service query-parameter validation and transformation
+- `services/github/github-issues-search.service.js`: analogous GraphQL search implementation
+- `services/github/github-issues.tester.js`: existing issue and PR behavior tests
 
 #### Solution Approach
 
-_To be completed in Phase II (UMPIRE)._
+I structured the full plan with UMPIRE.
+
+- **Understand:** The badge needs to preserve every existing issue and PR URL while allowing PR counts to include only drafts or exclude drafts.
+- **Match:** The maintainer's review on PR #11401 defines the target split. `github-issues-search.service.js` already demonstrates GraphQL `search(query:, type: ISSUE) { issueCount }`, and the prior PR contains useful investigation and tests that need to be reshaped rather than copied unchanged.
+- **Plan:** Keep issue variants in `GithubIssues` on `repository.issues`. Move the four PR variants into a new `GithubPullRequests` service, add presence-only `excludeDrafts` and `onlyDrafts` query parameters, and use one search path for filtered and unfiltered PR counts. Preserve rendering, labels, public URLs, authentication, and repo-not-found behavior.
+- **Implement:** Begin Phase III on a clean `fix-issue-11286` branch. Keep these CodePath documents off the eventual upstream PR and preserve the original contributor attribution requested by the maintainer.
+- **Review:** Check route compatibility, parameter conventions, scope, attribution, the Shields contribution guide, and the PR template before submission.
+- **Evaluate:** Add deterministic tests for unfiltered, `draft:false`, `draft:true`, labels, open/closed, raw/non-raw, zero matches, repo not found, and conflicting flags. Run focused tests first, then the required broader checks.
+
+The plan also uses `git log` and `git blame`, identifies GitHub issue search as the analogous implementation, and calls out label escaping and conflicting draft flags as proactive edge cases.
+
+**Full implementation plan:** [`codepath/plan.md`](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md)
+
+**Implementation plan commit:** [`d3a6b7ea0b`](https://github.com/azizu06/shields/commit/d3a6b7ea0b)
+
+#### Phase II Check-in
+
+- [ ] Submitted the Course Portal check-in with **Phase II Complete** marked
 
 ### Phase III — Solution Building
 
