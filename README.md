@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase II — Reproduction and Solution Planning (technical artifacts complete, Course Portal check-in pending) |
-| **Progress summary** | Reproduced issue #11286 against the live `badges/shields` PR badge. The normal request and `?excludeDrafts` both returned 26 open PRs while GitHub search showed 19 non-drafts and 7 drafts, which confirmed that Shields ignores the proposed parameter today. I traced that behavior through `GithubIssues.route`, `handle()`, and `fetch()`, then wrote a UMPIRE plan around the maintainer-requested `GitHubIssues` / `GitHubPullRequests` split. |
-| **Deliverable links** | [Phase II branch](https://github.com/azizu06/shields/tree/issue-11286-docs) · [Reproduction commit `46dc6bc177`](https://github.com/azizu06/shields/commit/46dc6bc177) · [Reproduction document](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [Plan commit `d3a6b7ea0b`](https://github.com/azizu06/shields/commit/d3a6b7ea0b) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Maintainer roadmap](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) |
-| **Blockers / questions** | No technical blockers. I still need to submit the Course Portal check-in with Phase II Complete marked. Before Phase III I also want to confirm whether maintainers prefer mutually exclusive validation when both `excludeDrafts` and `onlyDrafts` are supplied. |
+| **Current phase** | Cycle 2 · Phase IV, PR submitted and CI in progress |
+| **Progress summary** | Split the pull request variants into `GithubPullRequests`, moved every PR count onto GitHub search, and added the presence-only `excludeDrafts` and `onlyDrafts` options. Conflicting filters are rejected before GitHub is contacted, issue badges keep their existing query, and missing repositories still report `repo not found`. The implementation is split into six focused commits and is now open upstream as PR #12026. |
+| **Deliverable links** | [PR #12026](https://github.com/badges/shields/pull/12026) · [WIP branch](https://github.com/azizu06/shields/tree/fix-issue-11286) · [Implementation commit `7faf119877`](https://github.com/azizu06/shields/commit/7faf119877) · [Final test commit `155294e951`](https://github.com/azizu06/shields/commit/155294e951) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
+| **Blockers / questions** | No implementation blocker. Twelve deterministic service tests and 1,528 core tests pass locally. The live GitHub picture tests hit the unauthenticated API rate limit locally, so I documented that evidence in the PR and am waiting on authenticated CI and maintainer review. |
 
 ---
 
@@ -52,7 +52,7 @@ The maintainer's [reply on the issue](https://github.com/badges/shields/issues/1
 - feloy's original PR added `excludeDrafts` and `onlyDrafts` params onto the existing combined badge. The maintainer didn't reject the idea, he rejected the shape, then the PR went stale for ~6 months and was auto-closed on 2026-06-27.
 - The maintainer's [roadmap comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) is the actual spec: "draft issues" aren't a real concept, so don't add draft terminology to a badge that also counts issues. Instead **split** the badge — `GitHubIssues` stays as-is on the `repository` query; a new `GitHubPullRequests` badge takes the PR variants and the new draft options and uses the `search` query for all of them.
 - Why `search` and not `repository`: the `repository` query returns a fixed pre-aggregated count with no way to condition on draft state. The `search` query accepts qualifiers (`is:pr is:open draft:false` / `draft:true`), so it's the only one that can count non-draft PRs. Putting *all* PR cases on `search` (not just the filtered ones) keeps a single source of truth and avoids two code paths drifting.
-- **Attribution:** the maintainer asked whoever picks this up to fetch feloy's commits (`git fetch origin pull/11401/head:pr-11401`) and include a co-author trailer crediting feloy. I'll do that on the eventual PR.
+- **Attribution:** the maintainer asked whoever picked this up to include a co-author trailer crediting feloy. Commit [`7faf119877`](https://github.com/azizu06/shields/commit/7faf119877) includes that credit.
 
 #### Cohort Issue Ledger Entry
 
@@ -122,7 +122,7 @@ The plan also uses `git log` and `git blame`, identifies GitHub issue search as 
 
 #### Phase II Check-in
 
-- [ ] Submitted the Course Portal check-in with **Phase II Complete** marked
+- [x] Submitted the Course Portal check-in with **Phase II Complete** marked
 
 ### Phase III — Solution Building
 
@@ -130,27 +130,36 @@ The plan also uses `git log` and `git blame`, identifies GitHub issue search as 
 
 #### WIP Branch
 
-- **Branch URL:**
-- **First commit date:**
-- **Most recent commit date:**
+- **Branch URL:** https://github.com/azizu06/shields/tree/fix-issue-11286
+- **First commit date:** 2026-07-19
+- **Most recent commit date:** 2026-07-19
 
 #### Implementation Notes
 
-_To be completed in Phase III._
-
 | Date | Note |
 |---|---|
-| | |
+| 2026-07-19 | **Service split** (commit [`7faf119877`](https://github.com/azizu06/shields/commit/7faf119877)). Moved all four PR variants into `GithubPullRequests` and left the issue variants in `GithubIssues`. The PR service uses one GitHub search path for filtered and unfiltered counts, while a separate repository lookup preserves the difference between a real repository with zero open PRs and a repository that does not exist. The commit includes feloy's requested co-author credit. |
+| 2026-07-19 | **Existing test migration** (commit [`bbbdc6da99`](https://github.com/azizu06/shields/commit/bbbdc6da99)). Moved the live PR picture checks into the new service tester without changing their public URLs or badge output. |
+| 2026-07-19 | **Search variant coverage** (commit [`3dd7b60539`](https://github.com/azizu06/shields/commit/3dd7b60539)). Added deterministic checks for the exact unfiltered search string and for open, closed, raw, and non-raw rendering. |
+| 2026-07-19 | **Draft filter coverage** (commit [`3db17e50a9`](https://github.com/azizu06/shields/commit/3db17e50a9)). Verified `draft:false`, `draft:true`, multi-word labels, and closed/raw composition against exact GitHub search qualifiers. |
+| 2026-07-19 | **Request error coverage** (commit [`0b057b6c96`](https://github.com/azizu06/shields/commit/0b057b6c96)). Proved that supplying both draft filters is rejected before an outbound GitHub request and that a missing repository reports `repo not found` instead of looking like a valid zero count. |
+| 2026-07-19 | **Response boundary and issue regression coverage** (commit [`155294e951`](https://github.com/azizu06/shields/commit/155294e951)). Added malformed GraphQL response coverage and a characterization test proving that issue badges still use `repository.issues` after the split. |
 
 #### Testing Strategy
 
-_To be completed in Phase III._
+I used deterministic GraphQL mocks for exact behavior because live repository counts can change at any time. The mocked tests assert the full search string Shields sends to GitHub, including state, label, and draft qualifiers, then assert the rendered badge. They also cover invalid query parameters, missing repositories, and malformed upstream data. One issue test protects the unchanged side of the service split.
+
+- `npm run test:core` passed with **1,528 tests**.
+- The mocked `GithubIssues` and `GithubPullRequests` service run passed with **12 tests**.
+- `npm run defs` passed and confirmed that the two split services do not publish conflicting OpenAPI routes.
+- ESLint, Prettier, and `git diff --check` passed on the four changed files.
+- The full live service run reached GitHub without authentication and received HTTP 403 with `X-RateLimit-Limit: 0`. I recorded this as an environment limitation instead of treating it as a product regression. The PR title includes `[GitHub]` so Shields CI runs the authenticated GitHub service suite.
 
 #### Mentor Feedback Requests
 
 | Date | Question / request | Response |
 |---|---|---|
-| | | |
+| 2026-07-19 | Requested focused pre-submission review of route ownership, public compatibility, and Shields test standards. | The spec review caught conflicting generic OpenAPI routes after the service split. I replaced them with explicit paths for all four PR variants and `npm run defs` passed. The standards review also caught missing malformed-response coverage, which I added before committing. Both review passes were clean after the fixes. |
 
 ### Phase IV — Pull Request & Submission
 
@@ -158,22 +167,22 @@ _To be completed in Phase III._
 
 #### Pull Request
 
-- **PR URL:**
-- **PR title:**
-- **Submitted date:**
-- **Status:** Open / Changes requested / Merged
+- **PR URL:** https://github.com/badges/shields/pull/12026
+- **PR title:** `[GitHub] Add draft filters to pull request count badges`
+- **Submitted date:** 2026-07-19
+- **Status:** Open, ready for review. At the time of this update, 6 checks passed, 0 failed, 1 was skipped, and 12 were still pending.
 
 #### PR Description Summary
 
-_To be completed in Phase IV._
+The PR starts with why the old `repository.pullRequests` count could not support issue #11286, then explains the service split and search-based solution. It documents the mutually exclusive presence-only parameters, route and rendering compatibility, repo-not-found behavior, local test evidence, the live API rate-limit constraint, and feloy's attribution. It also includes `Closes #11286` so GitHub links the issue to the PR.
 
 #### Pre-submission Checklist
 
-- [ ] Code addresses the selected issue
-- [ ] Tests written and passing
-- [ ] Documentation follows the project's contribution guidelines
-- [ ] PR description explains the change clearly
-- [ ] Self-reviewed against the project's CONTRIBUTING.md
+- [x] Code addresses the selected issue
+- [x] Tests written and passing
+- [x] OpenAPI documentation follows the project's contribution conventions
+- [x] PR description explains the reason for the change before the implementation details
+- [x] Self-reviewed against the project's service-test and PR guidance
 
 #### Maintainer Feedback Log
 
@@ -181,7 +190,18 @@ _Log every round of review feedback and your response. This is evidence of profe
 
 | Date | Reviewer | Feedback | My response / commit |
 |---|---|---|---|
-| | | | |
+| 2026-07-19 | Copilot pull request reviewer | The automated review could not run because the requester had reached the quota limit. It left no code feedback. | No code change was needed. The branch already had separate spec and standards reviews, and I am waiting for human maintainer review. |
+
+#### Phase IV Reflection
+
+The most important design lesson was that a count and an existence check answer different questions. GitHub search can correctly return zero matching PRs, but that result alone cannot tell Shields whether the repository exists. Keeping the repository lookup beside the search lets the badge report `repo not found` for a bad repository and `0 open` for a real repository with no matching PRs.
+
+The pre-submission review also caught a problem that the feature tests did not. The runtime routes were valid, but both split services claimed the same generic OpenAPI path, so the definition generator failed. That was a useful reminder that a service change is not complete when its request tests pass. Generated definitions, validation boundaries, and the unchanged half of a split all need their own checks.
+
+#### Course Portal Check-ins
+
+- [ ] Submitted Phase III
+- [ ] Submitted Phase IV
 
 ---
 
@@ -393,4 +413,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
-| 2 | [#11286](https://github.com/badges/shields/issues/11286) | _pending_ | In progress — Phase I (claimed; scope reshaped by maintainer into a `GitHubIssues` / `GitHubPullRequests` badge split) |
+| 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Open.** Implementation complete, local deterministic tests green, CI and maintainer review in progress |
