@@ -204,8 +204,8 @@ The CI failure taught me a second review lesson. A broad family test run can fai
 
 #### Course Portal Check-ins
 
-- [ ] Submitted Phase III
-- [ ] Submitted Phase IV
+- [x] Submitted Phase III
+- [x] Submitted Phase IV
 
 ---
 
