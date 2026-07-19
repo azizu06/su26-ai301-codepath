@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase IV, PR submitted and CI in progress |
+| **Current phase** | Cycle 2 · Phase IV, PR open with CI green and maintainer review requested |
 | **Progress summary** | Split the pull request variants into `GithubPullRequests`, moved every PR count onto GitHub search, and added the presence-only `excludeDrafts` and `onlyDrafts` options. Conflicting filters are rejected before GitHub is contacted, issue badges keep their existing query, and missing repositories still report `repo not found`. The implementation is split into six focused commits and is now open upstream as PR #12026. |
 | **Deliverable links** | [PR #12026](https://github.com/badges/shields/pull/12026) · [WIP branch](https://github.com/azizu06/shields/tree/fix-issue-11286) · [Implementation commit `7faf119877`](https://github.com/azizu06/shields/commit/7faf119877) · [Final test commit `155294e951`](https://github.com/azizu06/shields/commit/155294e951) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
-| **Blockers / questions** | No implementation blocker. Twelve deterministic service tests and 1,528 core tests pass locally. The live GitHub picture tests hit the unauthenticated API rate limit locally, so I documented that evidence in the PR and am waiting on authenticated CI and maintainer review. |
+| **Blockers / questions** | No implementation blocker. Twelve deterministic service tests and 1,528 core tests pass locally. The targeted authenticated CI run passed all 32 `GithubIssues` and `GithubPullRequests` tests, and the PR currently has 19 passing checks with no failures. I requested review from the maintainer who guided me on the issue. |
 
 ---
 
@@ -153,7 +153,8 @@ I used deterministic GraphQL mocks for exact behavior because live repository co
 - The mocked `GithubIssues` and `GithubPullRequests` service run passed with **12 tests**.
 - `npm run defs` passed and confirmed that the two split services do not publish conflicting OpenAPI routes.
 - ESLint, Prettier, and `git diff --check` passed on the four changed files.
-- The full live service run reached GitHub without authentication and received HTTP 403 with `X-RateLimit-Limit: 0`. I recorded this as an environment limitation instead of treating it as a product regression. The PR title includes `[GitHub]` so Shields CI runs the authenticated GitHub service suite.
+- The full live service run reached GitHub without authentication and received HTTP 403 with `X-RateLimit-Limit: 0`. I recorded this as an environment limitation instead of treating it as a product regression.
+- The first PR title used the broad `[GitHub]` family selector. It ran 300 live service tests and two unrelated `GithubPullRequestCheckState` tests failed because their year-old fixture PR no longer exposes the check records the tests expect. I changed the title to the documented multi-service selector `[GithubIssues GithubPullRequests]`. The resulting authenticated CI run exercised the two changed services directly and passed all **32 tests**.
 
 #### Mentor Feedback Requests
 
@@ -168,9 +169,9 @@ I used deterministic GraphQL mocks for exact behavior because live repository co
 #### Pull Request
 
 - **PR URL:** https://github.com/badges/shields/pull/12026
-- **PR title:** `[GitHub] Add draft filters to pull request count badges`
+- **PR title:** `[GithubIssues GithubPullRequests] Support draft filters in pull request count badges`
 - **Submitted date:** 2026-07-19
-- **Status:** Open, ready for review. At the time of this update, 6 checks passed, 0 failed, 1 was skipped, and 12 were still pending.
+- **Status:** Open, ready for review. At the time of this update, 19 checks passed, 0 failed, and the unrelated Docusaurus warning check was skipped. The targeted service run passed all 32 tests.
 
 #### PR Description Summary
 
@@ -191,12 +192,15 @@ _Log every round of review feedback and your response. This is evidence of profe
 | Date | Reviewer | Feedback | My response / commit |
 |---|---|---|---|
 | 2026-07-19 | Copilot pull request reviewer | The automated review could not run because the requester had reached the quota limit. It left no code feedback. | No code change was needed. The branch already had separate spec and standards reviews, and I am waiting for human maintainer review. |
+| 2026-07-19 | PyvesB | I requested review from the maintainer who had already pointed me to the prior implementation guidance on issue #11286. | [Review request comment](https://github.com/badges/shields/pull/12026#issuecomment-5016724993) posted after the targeted service CI passed. Awaiting feedback. |
 
 #### Phase IV Reflection
 
 The most important design lesson was that a count and an existence check answer different questions. GitHub search can correctly return zero matching PRs, but that result alone cannot tell Shields whether the repository exists. Keeping the repository lookup beside the search lets the badge report `repo not found` for a bad repository and `0 open` for a real repository with no matching PRs.
 
 The pre-submission review also caught a problem that the feature tests did not. The runtime routes were valid, but both split services claimed the same generic OpenAPI path, so the definition generator failed. That was a useful reminder that a service change is not complete when its request tests pass. Generated definitions, validation boundaries, and the unchanged half of a split all need their own checks.
+
+The CI failure taught me a second review lesson. A broad family test run can fail in code I never touched because live fixtures age and external API state changes. The right response was not to edit an unrelated service or pretend the failure did not matter. I traced both failures to `GithubPullRequestCheckState`, verified that its fixture PR now has no check records, and then used Shields' documented service-title convention to test only `GithubIssues` and `GithubPullRequests`. That kept the evidence honest and the contribution scoped to issue #11286.
 
 #### Course Portal Check-ins
 
@@ -413,4 +417,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
-| 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Open.** Implementation complete, local deterministic tests green, CI and maintainer review in progress |
+| 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Open.** Implementation complete, local and targeted CI tests green, maintainer review requested |
