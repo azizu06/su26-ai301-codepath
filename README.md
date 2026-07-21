@@ -16,7 +16,7 @@
 | **Current phase** | Cycle 2 · Phase IV complete. PR #12026 was approved and merged into `master` on 2026-07-21. |
 | **Progress summary** | Responded to two rounds of maintainer review, revised the PR-count architecture to preserve renamed-repository redirects, replaced the mocked service tests with 13 live route-level tests, and added a live `facebook/react` redirect case. The final implementation keeps unfiltered counts on `repository.pullRequests` and uses search only for `excludeDrafts` and `onlyDrafts`. PyvesB approved the result, all required checks passed, the PR merged, and issue #11286 closed automatically. |
 | **Deliverable links** | [Merged PR #12026](https://github.com/badges/shields/pull/12026) · [Merge commit `3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3) · [Final implementation head `936924c`](https://github.com/badges/shields/commit/936924ca1d30406ac771c9ac11e2d5d4772c2966) · [Targeted Services CI](https://github.com/badges/shields/actions/runs/29832880482) · [Maintainer approval](https://github.com/badges/shields/pull/12026#pullrequestreview-4745903300) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
-| **Blockers / questions** | No implementation or review blocker. Cycle 2 Phases III and IV were submitted, the final PR head passed 18 checks with no failures, the maintainer approved the change, and the issue is closed. The cohort issue ledger entry remains unverified in this README. |
+| **Blockers / questions** | None. All Cycle 2 phase check-ins were submitted through the Course Portal, the final PR head passed 18 checks with no failures, the maintainer approved the change, and the issue is closed. |
 
 ---
 
@@ -56,9 +56,9 @@ The maintainer's [reply on the issue](https://github.com/badges/shields/issues/1
 
 **Final architecture after PR review:** The initial plan above changed after DCjanus tested a renamed repository path. GitHub's repository query follows `facebook/react` to `react/react`, but search against the old path returns zero. I chose to preserve existing badge behavior by keeping unfiltered PR counts on `repository.pullRequests` and using search only when a draft filter is present. PyvesB agreed that this was the right direction for this PR.
 
-#### Cohort Issue Ledger Entry
+#### Phase I Check-in
 
-- [ ] Entered in cohort issue ledger
+- [x] Submitted the Course Portal check-in with **Phase I Complete** marked
 
 ### Phase II — Reproduction & Solution Planning
 
