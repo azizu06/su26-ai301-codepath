@@ -13,14 +13,14 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase IV, PR open with CI green and maintainer review requested |
-| **Progress summary** | Split the pull request variants into `GithubPullRequests`, moved every PR count onto GitHub search, and added the presence-only `excludeDrafts` and `onlyDrafts` options. Conflicting filters are rejected before GitHub is contacted, issue badges keep their existing query, and missing repositories still report `repo not found`. The implementation is split into six focused commits and is now open upstream as PR #12026. |
-| **Deliverable links** | [PR #12026](https://github.com/badges/shields/pull/12026) · [WIP branch](https://github.com/azizu06/shields/tree/fix-issue-11286) · [Implementation commit `7faf119877`](https://github.com/azizu06/shields/commit/7faf119877) · [Final test commit `155294e951`](https://github.com/azizu06/shields/commit/155294e951) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
-| **Blockers / questions** | No implementation blocker. Twelve deterministic service tests and 1,528 core tests pass locally. The targeted authenticated CI run passed all 32 `GithubIssues` and `GithubPullRequests` tests, and the PR currently has 19 passing checks with no failures. I requested review from the maintainer who guided me on the issue. |
+| **Current phase** | Cycle 2 · Phase IV complete. PR #12026 was approved and merged into `master` on 2026-07-21. |
+| **Progress summary** | Responded to two rounds of maintainer review, revised the PR-count architecture to preserve renamed-repository redirects, replaced the mocked service tests with 13 live route-level tests, and added a live `facebook/react` redirect case. The final implementation keeps unfiltered counts on `repository.pullRequests` and uses search only for `excludeDrafts` and `onlyDrafts`. PyvesB approved the result, all required checks passed, the PR merged, and issue #11286 closed automatically. |
+| **Deliverable links** | [Merged PR #12026](https://github.com/badges/shields/pull/12026) · [Merge commit `3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3) · [Final implementation head `936924c`](https://github.com/badges/shields/commit/936924ca1d30406ac771c9ac11e2d5d4772c2966) · [Targeted Services CI](https://github.com/badges/shields/actions/runs/29832880482) · [Maintainer approval](https://github.com/badges/shields/pull/12026#pullrequestreview-4745903300) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
+| **Blockers / questions** | No implementation or review blocker. Cycle 2 Phases III and IV were submitted, the final PR head passed 18 checks with no failures, the maintainer approved the change, and the issue is closed. The cohort issue ledger entry remains unverified in this README. |
 
 ---
 
-## Cycle 2 — Issue #11286 (current)
+## Cycle 2: Issue #11286
 
 ### Phase I — Issue Selection
 
@@ -53,6 +53,8 @@ The maintainer's [reply on the issue](https://github.com/badges/shields/issues/1
 - The maintainer's [roadmap comment](https://github.com/badges/shields/pull/11401#issuecomment-3692559871) is the actual spec: "draft issues" aren't a real concept, so don't add draft terminology to a badge that also counts issues. Instead **split** the badge — `GitHubIssues` stays as-is on the `repository` query; a new `GitHubPullRequests` badge takes the PR variants and the new draft options and uses the `search` query for all of them.
 - Why `search` and not `repository`: the `repository` query returns a fixed pre-aggregated count with no way to condition on draft state. The `search` query accepts qualifiers (`is:pr is:open draft:false` / `draft:true`), so it's the only one that can count non-draft PRs. Putting *all* PR cases on `search` (not just the filtered ones) keeps a single source of truth and avoids two code paths drifting.
 - **Attribution:** the maintainer asked whoever picked this up to include a co-author trailer crediting feloy. Commit [`7faf119877`](https://github.com/azizu06/shields/commit/7faf119877) includes that credit.
+
+**Final architecture after PR review:** The initial plan above changed after DCjanus tested a renamed repository path. GitHub's repository query follows `facebook/react` to `react/react`, but search against the old path returns zero. I chose to preserve existing badge behavior by keeping unfiltered PR counts on `repository.pullRequests` and using search only when a draft filter is present. PyvesB agreed that this was the right direction for this PR.
 
 #### Cohort Issue Ledger Entry
 
@@ -132,29 +134,32 @@ The plan also uses `git log` and `git blame`, identifies GitHub issue search as 
 
 - **Branch URL:** https://github.com/azizu06/shields/tree/fix-issue-11286
 - **First commit date:** 2026-07-19
-- **Most recent commit date:** 2026-07-19
+- **Most recent commit date:** 2026-07-21
 
 #### Implementation Notes
 
 | Date | Note |
 |---|---|
-| 2026-07-19 | **Service split** (commit [`7faf119877`](https://github.com/azizu06/shields/commit/7faf119877)). Moved all four PR variants into `GithubPullRequests` and left the issue variants in `GithubIssues`. The PR service uses one GitHub search path for filtered and unfiltered counts, while a separate repository lookup preserves the difference between a real repository with zero open PRs and a repository that does not exist. The commit includes feloy's requested co-author credit. |
-| 2026-07-19 | **Existing test migration** (commit [`bbbdc6da99`](https://github.com/azizu06/shields/commit/bbbdc6da99)). Moved the live PR picture checks into the new service tester without changing their public URLs or badge output. |
-| 2026-07-19 | **Search variant coverage** (commit [`3dd7b60539`](https://github.com/azizu06/shields/commit/3dd7b60539)). Added deterministic checks for the exact unfiltered search string and for open, closed, raw, and non-raw rendering. |
-| 2026-07-19 | **Draft filter coverage** (commit [`3db17e50a9`](https://github.com/azizu06/shields/commit/3db17e50a9)). Verified `draft:false`, `draft:true`, multi-word labels, and closed/raw composition against exact GitHub search qualifiers. |
-| 2026-07-19 | **Request error coverage** (commit [`0b057b6c96`](https://github.com/azizu06/shields/commit/0b057b6c96)). Proved that supplying both draft filters is rejected before an outbound GitHub request and that a missing repository reports `repo not found` instead of looking like a valid zero count. |
-| 2026-07-19 | **Response boundary and issue regression coverage** (commit [`155294e951`](https://github.com/azizu06/shields/commit/155294e951)). Added malformed GraphQL response coverage and a characterization test proving that issue badges still use `repository.issues` after the split. |
+| 2026-07-19 | **Service split** (final PR commit [`7fb28a4556`](https://github.com/badges/shields/commit/7fb28a4556230d93ec8c863d9caf52f43b3e6011)). Moved all four PR variants into `GithubPullRequests` and left the issue variants in `GithubIssues`. The initial version used GitHub search for every PR count and included feloy's requested co-author credit. |
+| 2026-07-19 | **Existing test migration** (final PR commit [`effd115baa`](https://github.com/badges/shields/commit/effd115baa8b534355b68b6df57b28a647c97206)). Moved the existing live PR picture checks into the new service tester without changing their public URLs or badge output. |
+| 2026-07-19 | **Search variant coverage** (final PR commit [`bd76df4c44`](https://github.com/badges/shields/commit/bd76df4c4451b99101a9f3798ca1ff4826d7cf59)). Added deterministic checks for the exact unfiltered search string and for open, closed, raw, and non-raw rendering. |
+| 2026-07-19 | **Draft filter coverage** (final PR commit [`3adc4fc216`](https://github.com/badges/shields/commit/3adc4fc21694587b133c6ef9f01edd9f9802a470)). Verified `draft:false`, `draft:true`, multi-word labels, and closed/raw composition against exact GitHub search qualifiers. |
+| 2026-07-19 | **Request error coverage** (final PR commit [`11b98ce67e`](https://github.com/badges/shields/commit/11b98ce67e0f0130a9bbc3eac88744fcca0a71c9)). Proved that supplying both draft filters is rejected before an outbound GitHub request and that a missing repository reports `repo not found` instead of looking like a valid zero count. |
+| 2026-07-19 | **Response boundary and issue regression coverage** (final PR commit [`aaa17df13e`](https://github.com/badges/shields/commit/aaa17df13eee4cc26f32e98f4eef3d5df65b6353)). Added malformed GraphQL response coverage and a characterization test proving that issue badges still use `repository.issues` after the split. |
+| 2026-07-20 | **Redirect-compatible query paths** (commit [`bb8f7a0385`](https://github.com/badges/shields/commit/bb8f7a0385e5385668df446c92b00ce2b9e41a1e)). After maintainer testing found that search does not follow an old owner/repository path, I kept unfiltered variants on `repository.pullRequests` and limited search to the two draft-filtered cases. I also changed the badge modifiers to the clearer singular forms `draft` and `non-draft`. |
+| 2026-07-21 | **Live route-level test revision** (commit [`936924ca1d`](https://github.com/badges/shields/commit/936924ca1d30406ac771c9ac11e2d5d4772c2966)). Removed the Nock interceptors and the confusing issue-query characterization test. The final tester has 13 live public-route cases, including `facebook/react` as a repository-redirect regression test. |
 
 #### Testing Strategy
 
-I used deterministic GraphQL mocks for exact behavior because live repository counts can change at any time. The mocked tests assert the full search string Shields sends to GitHub, including state, label, and draft qualifiers, then assert the rendered badge. They also cover invalid query parameters, missing repositories, and malformed upstream data. One issue test protects the unchanged side of the service split.
+I started with deterministic GraphQL mocks because they made the exact query paths and RED-to-GREEN behavior easy to verify. During review, PyvesB explained that the Nock setup was hard to follow and asked for live tests through the public badge routes. I replaced the internal-request mocks with 13 live `GithubPullRequests` tests. The final suite covers open, closed, raw, labels, both draft filters, conflicting filters, missing repositories, and the `facebook/react` redirect case. Existing `GithubIssues` live tests protect the unchanged issue behavior.
 
-- `npm run test:core` passed with **1,528 tests**.
-- The mocked `GithubIssues` and `GithubPullRequests` service run passed with **12 tests**.
+- `npm run test:core` passed with **1,544 tests** on the final branch.
+- The final authenticated runs passed **13 live `GithubPullRequests` tests** and **27 combined `GithubIssues` and `GithubPullRequests` tests**.
 - `npm run defs` passed and confirmed that the two split services do not publish conflicting OpenAPI routes.
 - ESLint, Prettier, and `git diff --check` passed on the four changed files.
 - The full live service run reached GitHub without authentication and received HTTP 403 with `X-RateLimit-Limit: 0`. I recorded this as an environment limitation instead of treating it as a product regression.
 - The first PR title used the broad `[GitHub]` family selector. It ran 300 live service tests and two unrelated `GithubPullRequestCheckState` tests failed because their year-old fixture PR no longer exposes the check records the tests expect. I changed the title to the documented multi-service selector `[GithubIssues GithubPullRequests]`. The resulting authenticated CI run exercised the two changed services directly and passed all **32 tests**.
+- After the final live-test revision, the targeted [Services CI run](https://github.com/badges/shields/actions/runs/29832880482) passed on commit `936924ca1d`. The completed PR reported **18 passing checks, 0 failures, and 2 expected skips**.
 
 #### Mentor Feedback Requests
 
@@ -169,13 +174,14 @@ I used deterministic GraphQL mocks for exact behavior because live repository co
 #### Pull Request
 
 - **PR URL:** https://github.com/badges/shields/pull/12026
-- **PR title:** `[GithubIssues GithubPullRequests] Support draft filters in pull request count badges`
+- **PR title:** `[GithubIssues GithubPullRequests] Add draft filters without changing unfiltered counts`
 - **Submitted date:** 2026-07-19
-- **Status:** Open, ready for review. At the time of this update, 19 checks passed, 0 failed, and the unrelated Docusaurus warning check was skipped. The targeted service run passed all 32 tests.
+- **Merged date:** 2026-07-21
+- **Status:** **Merged** into `master` as commit [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3). PyvesB approved the final head after the maintainer feedback was addressed. The PR finished with 18 passing checks, 0 failures, and 2 expected skips.
 
 #### PR Description Summary
 
-The PR starts with why the old `repository.pullRequests` count could not support issue #11286, then explains the service split and search-based solution. It documents the mutually exclusive presence-only parameters, route and rendering compatibility, repo-not-found behavior, local test evidence, the live API rate-limit constraint, and feloy's attribution. It also includes `Closes #11286` so GitHub links the issue to the PR.
+The final PR description explains why two query paths are necessary before describing the code. GitHub's repository connection cannot filter drafts, while search does not preserve redirects from old repository paths. Unfiltered variants therefore use `repository.pullRequests`, and only `excludeDrafts` or `onlyDrafts` variants use search. The description also documents mutually exclusive presence-only parameters, route and rendering compatibility, `repo not found` behavior, live test and CI evidence, and feloy's attribution. It includes `Closes #11286`, and GitHub closed the issue when the PR merged.
 
 #### Pre-submission Checklist
 
@@ -191,8 +197,13 @@ _Log every round of review feedback and your response. This is evidence of profe
 
 | Date | Reviewer | Feedback | My response / commit |
 |---|---|---|---|
-| 2026-07-19 | Copilot pull request reviewer | The automated review could not run because the requester had reached the quota limit. It left no code feedback. | No code change was needed. The branch already had separate spec and standards reviews, and I am waiting for human maintainer review. |
-| 2026-07-19 | PyvesB | I requested review from the maintainer who had already pointed me to the prior implementation guidance on issue #11286. | [Review request comment](https://github.com/badges/shields/pull/12026#issuecomment-5016724993) posted after the targeted service CI passed. Awaiting feedback. |
+| 2026-07-19 | Copilot pull request reviewer | The automated review could not run because the requester had reached the quota limit. It left no code feedback. | No code change was needed. The branch already had separate spec and standards reviews, so I continued to human maintainer review. |
+| 2026-07-19 | PyvesB | I requested review from the maintainer who had already pointed me to the prior implementation guidance on issue #11286. | [Review request comment](https://github.com/badges/shields/pull/12026#issuecomment-5016724993) posted after the targeted service CI passed. PyvesB routed the review to DCjanus, and I acknowledged the handoff. |
+| 2026-07-20 | DCjanus | [Found a backwards-compatibility problem](https://github.com/badges/shields/pull/12026#discussion_r3616688383): `repository.pullRequests` follows a renamed repository path, but GitHub search against the old path returns zero. He presented three architectural options. | I reasoned through the tradeoffs and chose the first option: keep unfiltered PR counts on the repository query and use search only when a draft filter is supplied. This preserves existing badges without adding another GitHub request. Implemented in [`bb8f7a0385`](https://github.com/badges/shields/commit/bb8f7a0385e5385668df446c92b00ce2b9e41a1e). |
+| 2026-07-20 | DCjanus | [Compared repository and search counts](https://github.com/badges/shields/pull/12026#issuecomment-5026266291) across several large repositories and found that search returned slightly fewer closed PRs. | The final two-path design avoids changing existing unfiltered closed counts. Draft-filtered variants still use search because it is the only query that supports `draft:true` and `draft:false`. |
+| 2026-07-20 | DCjanus | [Suggested singular modifiers](https://github.com/badges/shields/pull/12026#discussion_r3616722328) because `draft` and `non-draft` describe “pull requests.” | Updated the rendered labels and their expectations in [`bb8f7a0385`](https://github.com/badges/shields/commit/bb8f7a0385e5385668df446c92b00ce2b9e41a1e). |
+| 2026-07-21 | PyvesB | Agreed with the two-path architecture, [asked to remove a confusing issue-query test](https://github.com/badges/shields/pull/12026#discussion_r3620356447), and [asked to replace the Nock-heavy PR tests with live tests](https://github.com/badges/shields/pull/12026#discussion_r3620507232), including one redirect case. | Removed the issue characterization test and converted the PR tester to 13 live route-level cases in [`936924ca1d`](https://github.com/badges/shields/commit/936924ca1d30406ac771c9ac11e2d5d4772c2966). Added `facebook/react` as the redirect case, reran the focused and core suites, passed the targeted Services CI, replied to both threads, and resolved them. |
+| 2026-07-21 | PyvesB | [Approved the final PR](https://github.com/badges/shields/pull/12026#pullrequestreview-4745903300): “Looks good to me.” | No further code change was needed. The PR merged into `master` as [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3), and issue #11286 closed automatically. |
 
 #### Phase IV Reflection
 
@@ -201,6 +212,12 @@ The most important design lesson was that a count and an existence check answer 
 The pre-submission review also caught a problem that the feature tests did not. The runtime routes were valid, but both split services claimed the same generic OpenAPI path, so the definition generator failed. That was a useful reminder that a service change is not complete when its request tests pass. Generated definitions, validation boundaries, and the unchanged half of a split all need their own checks.
 
 The CI failure taught me a second review lesson. A broad family test run can fail in code I never touched because live fixtures age and external API state changes. The right response was not to edit an unrelated service or pretend the failure did not matter. I traced both failures to `GithubPullRequestCheckState`, verified that its fixture PR now has no check records, and then used Shields' documented service-title convention to test only `GithubIssues` and `GithubPullRequests`. That kept the evidence honest and the contribution scoped to issue #11286.
+
+Maintainer review changed my understanding of backwards compatibility. The first implementation used one search path for every PR count because one path looked simpler. DCjanus's redirect example showed that internal simplicity would change existing badge behavior for renamed or transferred repositories. Two focused query paths are better here because each protects a separate requirement: the repository connection preserves old badge URLs, while search provides the draft qualifier that the repository connection does not support.
+
+The test review also showed me that deterministic mocks and live tests answer different questions. The mocks helped me reason about exact GraphQL strings during implementation, but they were coupled to the internal request shape and became harder to follow once the service had two paths. The final live tests verify the behavior users see through Shields' public routes and cover the real redirect case. If I worked on a similar service again, I would identify compatibility cases such as renamed repositories during planning and choose the project's preferred public test seam before building a large mock suite.
+
+This review cycle was not only cleanup after the code was done. I had to explain an architectural choice, revise it from maintainer evidence, update the test strategy, rerun the right verification, and reply with commit-level evidence. That is the part of the open-source process I understand better now: a good contribution includes responding to review with reasoning and proof, not just making the requested edits.
 
 #### Course Portal Check-ins
 
@@ -417,4 +434,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 | Cycle | Issue | PR | Outcome |
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
-| 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Open.** Implementation complete, local and targeted CI tests green, maintainer review requested |
+| 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Merged** into `master` (2026-07-21) as [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3). Multi-round maintainer feedback addressed, live redirect coverage added, approval received, and CI green. |
