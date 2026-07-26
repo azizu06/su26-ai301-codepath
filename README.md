@@ -13,10 +13,122 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 2 · Phase IV complete. PR #12026 was approved and merged into `master` on 2026-07-21. |
-| **Progress summary** | Responded to two rounds of maintainer review, revised the PR-count architecture to preserve renamed-repository redirects, replaced the mocked service tests with 13 live route-level tests, and added a live `facebook/react` redirect case. The final implementation keeps unfiltered counts on `repository.pullRequests` and uses search only for `excludeDrafts` and `onlyDrafts`. PyvesB approved the result, all required checks passed, the PR merged, and issue #11286 closed automatically. |
-| **Deliverable links** | [Merged PR #12026](https://github.com/badges/shields/pull/12026) · [Merge commit `3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3) · [Final implementation head `936924c`](https://github.com/badges/shields/commit/936924ca1d30406ac771c9ac11e2d5d4772c2966) · [Targeted Services CI](https://github.com/badges/shields/actions/runs/29832880482) · [Maintainer approval](https://github.com/badges/shields/pull/12026#pullrequestreview-4745903300) · [Issue #11286](https://github.com/badges/shields/issues/11286) · [Phase II reproduction](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/reproduction.md) · [UMPIRE plan](https://github.com/azizu06/shields/blob/issue-11286-docs/codepath/plan.md) |
-| **Blockers / questions** | None. All Cycle 2 phase check-ins were submitted through the Course Portal, the final PR head passed 18 checks with no failures, the maintainer approved the change, and the issue is closed. |
+| **Current phase** | Cycle 3, Phase I ready for submission and Phase II investigation in progress. |
+| **Progress summary** | Selected Shields issue #8944, verified that it is still open, unassigned, and has no competing pull request, then posted a claim comment asking whether the three-year-old direction is still wanted. I also reproduced both URL-fetching paths locally with controlled data, traced service loading through `loadServiceClasses()` and `Server.registerServices()`, and inspected current configuration and route-registration patterns without changing production code. |
+| **Deliverable links** | [Issue #8944](https://github.com/badges/shields/issues/8944) · [Claim and scope question](https://github.com/badges/shields/issues/8944#issuecomment-5070839035) · [Existing Shields fork](https://github.com/azizu06/shields) |
+| **Blockers / questions** | No maintainer has replied yet. I am waiting on whether Dynamic and Endpoint should use one shared control or separate controls, and what disabled routes should return. The technical investigation can continue, but I am holding production code until that scope is confirmed. |
+
+---
+
+## Cycle 3: Issue #8944
+
+### Phase I - Issue Selection
+
+#### Selected Issue
+
+- **Repository:** [badges/shields](https://github.com/badges/shields)
+- **Issue URL:** https://github.com/badges/shields/issues/8944
+- **Issue title:** Support ability to disable Dynamic and Endpoint badges for self-hosters
+- **Labels / tags:** `self-hosting`, `core`
+- **Availability check:** Open, unassigned, and no competing open pull request as of July 26, 2026
+
+#### Problem Summary
+
+Self-hosted Shields servers currently register the Dynamic and Endpoint badge routes with no administrator setting to turn them off. Those routes fetch a user-provided URL, so an internet-facing Shields server that can reach private network services may expose internal data through badge output. The issue asks for an opt-out that lets self-hosters remove those open-ended routes while keeping the normal Shields deployment unchanged. I chose it because it extends my previous Shields work into server configuration and gives me a concrete security boundary to learn.
+
+#### Why I Chose This Issue
+
+This is a good third contribution because it stays in Shields while moving me into the server and configuration layer. My first two contributions were service-specific, and this one requires me to understand how Shields loads every service class and registers its public routes. Shields is actively maintained and has contributor and local setup documentation I have already used for two merged contributions. I also wanted an issue where the security reason matters to the architecture, since the useful boundary is stopping the routes before either handler can make a request.
+
+#### Maintainer Guidance and Current Status
+
+The [original maintainer discussion](https://github.com/badges/shields/issues/8944#issuecomment-1445424473) supports the feature and leans toward keeping both badge types enabled by default for backwards compatibility. I posted a new comment on July 24 because the issue is three years old and asked whether that direction is still current, whether one shared option or separate controls are preferred, and whether skipping route registration is still the wanted implementation. No maintainer has replied yet, so I am treating the implementation shape as provisional.
+
+#### Likely Modules and Acceptance Criteria
+
+The current registration path runs through `loadServiceClasses()` in `core/base-service/loader.js` and `Server.registerServices()` in `core/server/server.js`. The affected badge handlers are under `services/dynamic/` and `services/endpoint/`. Configuration would likely touch `config/default.yml`, `config/custom-environment-variables.yml`, the public configuration schema in `core/server/server.js`, and `doc/self-hosting.md`.
+
+For the issue to be fixed:
+
+1. Dynamic and Endpoint badges stay enabled by default.
+2. A self-hosting administrator can disable the intended routes through documented configuration.
+3. Disabled routes are not registered, so their handlers cannot make outbound requests.
+4. Server tests cover default and disabled behavior.
+5. Documentation states the configuration name, environment-variable form, and disabled-route behavior.
+
+#### Phase I Check-in
+
+- [ ] Submit the Course Portal check-in with **Phase I Complete** marked
+
+### Phase II - Reproduction and Solution Planning
+
+#### Environment Setup
+
+- **Fork URL:** https://github.com/azizu06/shields
+- **Worktree:** Separate local issue worktree
+- **Local branch:** `codex/issue-8944`
+- **Base commit:** `f29362a33eae7116ade0df64e378f58ac5010c3a`, matching current `upstream/master` when this section was written
+- **Runtime:** Node.js v24.15.0
+- **Setup approach:** Fetched current `upstream/master`, created a separate issue worktree, and ran `npm ci` under the repository's required Node version.
+- **Setup challenge:** Shields requires Node 24 for this checkout and its native dependencies must be installed and run under the same Node version. Switching to Node 24 before `npm ci` avoided the engine and native-module mismatch seen under other versions.
+
+The branch is still local and has not been pushed to the fork. No Shields source file has been changed for Cycle 3.
+
+#### Controlled Reproduction
+
+I used a local fake service that returned the value `internal-data` so the test did not touch any real private system.
+
+1. Started the fake service on localhost with a JSON document containing `{"secret":"internal-data"}`.
+2. Started Shields from the issue worktree.
+3. Requested a Dynamic JSON badge with the fake URL and `query=$.secret`.
+4. Shields returned badge JSON whose message was `internal-data`.
+5. Enabled the existing local HTTP setting required by Endpoint badges, then requested an Endpoint badge backed by the fake service.
+6. Shields again returned badge JSON whose message was `internal-data`.
+7. Stopped both test servers.
+
+**Observed behavior:** Both open-ended badge types could fetch a caller-selected reachable URL and return the selected data in badge output.
+
+**Expected behavior:** A self-hosting administrator should be able to turn off the intended routes so these requests never reach either handler. The exact disabled response still needs maintainer confirmation.
+
+This proves the URL-fetching capability in a controlled environment. It does not claim that a full real-world attack was performed.
+
+#### Root Cause and Current Code Path
+
+`loadServiceClasses()` discovers every `*.service.js` module and returns every valid service class. `Server.registerServices()` then calls `serviceClass.register()` for each class without a configuration-based exclusion for Dynamic or Endpoint. The Dynamic JSON handler fetches the supplied URL and runs the requested JSONPath. The Endpoint handler validates its supplied URL, fetches badge-shaped JSON, and renders it.
+
+The closest current route toggle is the Prometheus `endpointEnabled` setting, which controls whether its metrics endpoint is registered. The closest configuration-history example is commit [`817b047`](https://github.com/badges/shields/commit/817b04794ff44c51202d2cd18cbb111f1627dce4), which added `allowUnsecuredEndpointRequests` through the public schema, default configuration, and Endpoint tests. Neither example already filters service classes, so the exact ownership boundary remains a design decision.
+
+#### Provisional UMPIRE Plan
+
+- **Understand:** Self-hosters need an enabled-by-default opt-out for the open-ended URL-fetching badge routes. The official `img.shields.io` deployment is not being disabled.
+- **Match:** Use the Prometheus endpoint toggle for conditional registration and the `allowUnsecuredEndpointRequests` history for the public configuration and test shape. There is no exact existing service-class suppression pattern.
+- **Plan:** After maintainer confirmation, add the approved public configuration shape and filter the intended service classes before route registration. Keep the default behavior unchanged, document the self-hosting setting, and avoid widening this issue into general SSRF prevention.
+- **Review:** Verify route identity, default compatibility, configuration validation, environment-variable exposure, generated service definitions, and self-hosting documentation.
+- **Evaluate:** Add server-level tests proving the routes exist by default and are absent when disabled, then run the focused server/configuration tests and the project-required broader checks.
+
+#### Proactive Edge Cases
+
+- One badge type enabled while the other is disabled, if maintainers choose separate controls
+- Both disabled together, if maintainers choose one shared control
+- Missing configuration preserving current enabled behavior
+- String environment-variable values converting to booleans correctly
+- Disabled routes returning the project's normal unmatched-route response
+- Service definitions and documentation matching runtime registration
+- Metrics `endpointEnabled` remaining unrelated to the Endpoint badge setting
+
+#### Phase II Check-in
+
+- [ ] Publish exact reproduction commands, requested URLs, and output logs
+- [ ] Push an issue-named branch with public reproduction and plan evidence
+- [ ] Submit the Course Portal check-in with **Phase II Complete** marked
+
+### Phase III - Solution Building
+
+_Waiting for current maintainer direction before production code._
+
+### Phase IV - Pull Request and Submission
+
+_No pull request opened._
 
 ---
 
@@ -435,3 +547,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
 | 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Merged** into `master` (2026-07-21) as [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3). Multi-round maintainer feedback addressed, live redirect coverage added, approval received, and CI green. |
+| 3 | [#8944](https://github.com/badges/shields/issues/8944) | Not opened | **In progress.** Phase I evidence documented, controlled reproduction complete, implementation waiting on fresh maintainer direction. |
