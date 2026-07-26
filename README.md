@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 3, Phase I ready for submission and Phase II investigation in progress. |
-| **Progress summary** | Selected Shields issue #8944, verified that it is still open, unassigned, and has no competing pull request, then posted a claim comment asking whether the three-year-old direction is still wanted. I also reproduced both URL-fetching paths locally with controlled data, traced service loading through `loadServiceClasses()` and `Server.registerServices()`, and inspected current configuration and route-registration patterns without changing production code. |
-| **Deliverable links** | [Issue #8944](https://github.com/badges/shields/issues/8944) · [Claim and scope question](https://github.com/badges/shields/issues/8944#issuecomment-5070839035) · [Existing Shields fork](https://github.com/azizu06/shields) |
-| **Blockers / questions** | No maintainer has replied yet. I am waiting on whether Dynamic and Endpoint should use one shared control or separate controls, and what disabled routes should return. The technical investigation can continue, but I am holding production code until that scope is confirmed. |
+| **Current phase** | Cycle 3, Phases I and II ready for Course Portal submission. |
+| **Progress summary** | Selected Shields issue #8944, posted a claim and scope question, and verified again that the issue is open, unassigned, and has no competing pull request. I published a controlled reproduction for both URL-fetching families, traced the registration boundary, used config history and a nearby gated handler as comparison points, and wrote a full UMPIRE plan with edge cases. No production code has changed. |
+| **Deliverable links** | [Issue #8944](https://github.com/badges/shields/issues/8944) · [Claim and scope question](https://github.com/badges/shields/issues/8944#issuecomment-5070839035) · [Phase II branch](https://github.com/azizu06/shields/tree/fix-issue-8944) · [Reproduction](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/reproduction.md) · [Solution plan](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/plan.md) |
+| **Blockers / questions** | No maintainer has replied yet. The shared-versus-separate control, final setting name, disabled response, and retired Endpoint compatibility route still need project direction. Phase II evidence is complete, but production work remains paused. If there is no reply by Tuesday, I will ask once in the Shields Discord contributor channel and link the issue comment. |
 
 ---
 
@@ -66,13 +66,16 @@ For the issue to be fixed:
 
 - **Fork URL:** https://github.com/azizu06/shields
 - **Worktree:** Separate local issue worktree
-- **Local branch:** `codex/issue-8944`
+- **Working branch:** https://github.com/azizu06/shields/tree/fix-issue-8944
 - **Base commit:** `f29362a33eae7116ade0df64e378f58ac5010c3a`, matching current `upstream/master` when this section was written
 - **Runtime:** Node.js v24.15.0
 - **Setup approach:** Fetched current `upstream/master`, created a separate issue worktree, and ran `npm ci` under the repository's required Node version.
-- **Setup challenge:** Shields requires Node 24 for this checkout and its native dependencies must be installed and run under the same Node version. Switching to Node 24 before `npm ci` avoided the engine and native-module mismatch seen under other versions.
+- **Setup challenge:** My first server attempt ran under Node 26.4.0 and crashed because `re2` had been compiled for Node 24. I switched back to Node 24.15.0, the same version used for `npm ci`, and the server stayed up.
 
-The branch is still local and has not been pushed to the fork. No Shields source file has been changed for Cycle 3.
+The branch contains two course-evidence commits and no Shields production-code change:
+
+- [`da5c824eff`](https://github.com/azizu06/shields/commit/da5c824eff): controlled reproduction, exact commands, responses, and code trace
+- [`e585c6d22f`](https://github.com/azizu06/shields/commit/e585c6d22f): UMPIRE plan, config and registration map, history, tests, and edge cases
 
 #### Controlled Reproduction
 
@@ -88,38 +91,46 @@ I used a local fake service that returned the value `internal-data` so the test 
 
 **Observed behavior:** Both open-ended badge types could fetch a caller-selected reachable URL and return the selected data in badge output.
 
-**Expected behavior:** A self-hosting administrator should be able to turn off the intended routes so these requests never reach either handler. The exact disabled response still needs maintainer confirmation.
+**Expected behavior:** A self-hosting administrator should be able to turn off the intended routes so these requests never reach either handler. The provisional plan uses Shields' normal unmatched-route response, but that response still needs maintainer confirmation.
 
 This proves the URL-fetching capability in a controlled environment. It does not claim that a full real-world attack was performed.
 
+**Exact commands and captured output:** [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/reproduction.md)
+
 #### Root Cause and Current Code Path
 
-`loadServiceClasses()` discovers every `*.service.js` module and returns every valid service class. `Server.registerServices()` then calls `serviceClass.register()` for each class without a configuration-based exclusion for Dynamic or Endpoint. The Dynamic JSON handler fetches the supplied URL and runs the requested JSONPath. The Endpoint handler validates its supplied URL, fetches badge-shaped JSON, and renders it.
+`loadServiceClasses()` in `core/base-service/loader.js` lines 46-71 discovers every `*.service.js` module. Lines 67-69 also assign the directory-derived `serviceFamily`. `Server.registerServices()` in `core/server/server.js` lines 470-492 then calls `serviceClass.register()` for each class without a configuration-based exclusion for `dynamic` or `endpoint`. The Dynamic JSON handler fetches the supplied URL and runs the requested JSONPath. The Endpoint handler validates its supplied URL, fetches badge-shaped JSON, and renders it.
 
-The closest current route toggle is the Prometheus `endpointEnabled` setting, which controls whether its metrics endpoint is registered. The closest configuration-history example is commit [`817b047`](https://github.com/badges/shields/commit/817b04794ff44c51202d2cd18cbb111f1627dce4), which added `allowUnsecuredEndpointRequests` through the public schema, default configuration, and Endpoint tests. Neither example already filters service classes, so the exact ownership boundary remains a design decision.
+The Prometheus `endpointEnabled` setting is a nearby gated-handler example. Its `/metrics` route remains mounted and returns HTTP 404 when disabled, so it is not an exact route-suppression match. The closest configuration-history example is commit [`817b047`](https://github.com/badges/shields/commit/817b04794ff44c51202d2cd18cbb111f1627dce4), which added `allowUnsecuredEndpointRequests` through the public schema, default configuration, and Endpoint tests. `git blame` also shows that the current registration loop and `serviceFamily` lines were last reshaped during the 2021 ESM migration. No existing pattern filters ordinary service classes by runtime configuration.
 
 #### Provisional UMPIRE Plan
 
 - **Understand:** Self-hosters need an enabled-by-default opt-out for the open-ended URL-fetching badge routes. The official `img.shields.io` deployment is not being disabled.
-- **Match:** Use the Prometheus endpoint toggle for conditional registration and the `allowUnsecuredEndpointRequests` history for the public configuration and test shape. There is no exact existing service-class suppression pattern.
-- **Plan:** After maintainer confirmation, add the approved public configuration shape and filter the intended service classes before route registration. Keep the default behavior unchanged, document the self-hosting setting, and avoid widening this issue into general SSRF prevention.
-- **Review:** Verify route identity, default compatibility, configuration validation, environment-variable exposure, generated service definitions, and self-hosting documentation.
-- **Evaluate:** Add server-level tests proving the routes exist by default and are absent when disabled, then run the focused server/configuration tests and the project-required broader checks.
+- **Match:** Use the Prometheus endpoint toggle only as a nearby gated-handler example and use the `allowUnsecuredEndpointRequests` history for the public configuration and test shape. There is no exact existing service-class suppression pattern.
+- **Plan:** After maintainer confirmation, add the approved public configuration shape and filter `dynamic` and `endpoint` service families in `Server.registerServices()` before calling `register()`. Keep the default enabled, document the setting, and avoid widening this into general SSRF prevention.
+- **Implement:** Production work is paused until maintainer direction. After confirmation, begin with one failing server-level test and make the minimum registration-filter change needed to pass it.
+- **Review:** Verify all five Dynamic formats, Endpoint, the retired Endpoint compatibility route, default compatibility, configuration validation, environment-variable parsing, generated definitions, and self-hosting documentation.
+- **Evaluate:** Add server-level tests proving the intended routes exist by default and are absent when disabled, prove the fake upstream receives no disabled request, verify an ordinary badge still works, then run focused and broader repository checks.
+
+**Full solution plan:** [`codepath/plan.md`](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/plan.md)
 
 #### Proactive Edge Cases
 
 - One badge type enabled while the other is disabled, if maintainers choose separate controls
 - Both disabled together, if maintainers choose one shared control
-- Missing configuration preserving current enabled behavior
+- No operator override preserving the enabled default
 - String environment-variable values converting to booleans correctly
 - Disabled routes returning the project's normal unmatched-route response
+- The `dynamic` family covering JSON, regex, TOML, XML, and YAML
+- The `endpoint` family also containing the retired `/badge/endpoint` compatibility route
 - Service definitions and documentation matching runtime registration
 - Metrics `endpointEnabled` remaining unrelated to the Endpoint badge setting
+- HTTPS Endpoint URLs remaining open ended even when unsecured HTTP is blocked
 
 #### Phase II Check-in
 
-- [ ] Publish exact reproduction commands, requested URLs, and output logs
-- [ ] Push an issue-named branch with public reproduction and plan evidence
+- [x] Published exact reproduction commands, requested URLs, and output logs
+- [x] Pushed an issue-named branch with public reproduction and plan evidence
 - [ ] Submit the Course Portal check-in with **Phase II Complete** marked
 
 ### Phase III - Solution Building
