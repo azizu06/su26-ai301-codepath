@@ -178,6 +178,7 @@ The final test addition is larger than the production filter because each affect
 - `git diff --check upstream/master...HEAD`: passed
 - Independent standards review: clean
 - Independent specification review: clean
+- Upstream PR checks: **18 passed, 0 failed, 1 expected skip, 1 duplicate `Danger` status still pending**; the actual Danger workflow passed and posted its clean comment against `3f153bd921`
 
 #### Phase III Check-in
 
@@ -195,7 +196,7 @@ The final test addition is larger than the production filter because each affect
 - **PR URL:** https://github.com/badges/shields/pull/12064
 - **PR title:** [Dynamic Endpoint] Allow self-hosters to disable open-ended badges
 - **Submitted date:** July 27, 2026
-- **Status:** Open, awaiting maintainer review
+- **Status:** Open, awaiting maintainer review; all 18 substantive CI checks passed, with one expected skip and one duplicate `Danger` status still pending
 
 #### PR Description Summary
 
@@ -641,4 +642,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
 | 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Merged** into `master` (2026-07-21) as [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3). Multi-round maintainer feedback addressed, live redirect coverage added, approval received, and CI green. |
-| 3 | [#8944](https://github.com/badges/shields/issues/8944) | [#12064](https://github.com/badges/shields/pull/12064) | **In review.** Phase III implemented and verified; upstream pull request open, awaiting CI and maintainer feedback. |
+| 3 | [#8944](https://github.com/badges/shields/issues/8944) | [#12064](https://github.com/badges/shields/pull/12064) | **In review.** Phase III implemented and verified; 18 substantive upstream checks passed with no failures, and the pull request is awaiting maintainer feedback. |
