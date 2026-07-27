@@ -13,10 +13,10 @@
 
 | Field | This Week |
 |---|---|
-| **Current phase** | Cycle 3, Phases I and II ready for Course Portal submission. |
-| **Progress summary** | Selected Shields issue #8944, posted a claim and scope question, and verified again that the issue is open, unassigned, and has no competing pull request. I published a controlled reproduction for both URL-fetching families, traced the registration boundary, used config history and a nearby gated handler as comparison points, and wrote a full UMPIRE plan with edge cases. No production code has changed. |
-| **Deliverable links** | [Issue #8944](https://github.com/badges/shields/issues/8944) · [Claim and scope question](https://github.com/badges/shields/issues/8944#issuecomment-5070839035) · [Phase II branch](https://github.com/azizu06/shields/tree/fix-issue-8944) · [Reproduction](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/reproduction.md) · [Solution plan](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/plan.md) |
-| **Blockers / questions** | No maintainer has replied yet. The shared-versus-separate control, final setting name, disabled response, and retired Endpoint compatibility route still need project direction. Phase II evidence is complete, but production work remains paused. If there is no reply by Tuesday, I will ask once in the Shields Discord contributor channel and link the issue comment. |
+| **Current phase** | Cycle 3, Phase III complete in code; Phase IV pull request open for review. |
+| **Progress summary** | Implemented and tested an enabled-by-default self-hosting control for issue #8944. When disabled, Shields skips registration for all five Dynamic routes plus the current and retired Endpoint routes, prevents their outbound requests, returns the standard not-found badge, and keeps ordinary badges available. The change is documented and submitted upstream as PR #12064. |
+| **Deliverable links** | [Issue #8944](https://github.com/badges/shields/issues/8944) · [Claim and scope question](https://github.com/badges/shields/issues/8944#issuecomment-5070839035) · [Pull request #12064](https://github.com/badges/shields/pull/12064) · [Implementation branch](https://github.com/azizu06/shields/tree/fix-issue-8944) · [Reproduction](https://github.com/azizu06/shields/blob/da5c824eff/codepath/reproduction.md) · [Solution plan](https://github.com/azizu06/shields/blob/e585c6d22f/codepath/plan.md) |
+| **Blockers / questions** | No maintainer replied before implementation, so the pull request explicitly presents the shared control, setting name, and standard unmatched-route response as reviewable assumptions. The remaining project blocker is maintainer review and merge. I still need to submit the course check-ins and make the separate substantive Slack contribution required by the Phase III rubric. |
 
 ---
 
@@ -72,7 +72,7 @@ For the issue to be fixed:
 - **Setup approach:** Fetched current `upstream/master`, created a separate issue worktree, and ran `npm ci` under the repository's required Node version.
 - **Setup challenge:** My first server attempt ran under Node 26.4.0 and crashed because `re2` had been compiled for Node 24. I switched back to Node 24.15.0, the same version used for `npm ci`, and the server stayed up.
 
-The branch contains two course-evidence commits and no Shields production-code change:
+Phase II evidence was first recorded in two course-evidence commits before production work began:
 
 - [`da5c824eff`](https://github.com/azizu06/shields/commit/da5c824eff): controlled reproduction, exact commands, responses, and code trace
 - [`e585c6d22f`](https://github.com/azizu06/shields/commit/e585c6d22f): UMPIRE plan, config and registration map, history, tests, and edge cases
@@ -95,7 +95,7 @@ I used a local fake service that returned the value `internal-data` so the test 
 
 This proves the URL-fetching capability in a controlled environment. It does not claim that a full real-world attack was performed.
 
-**Exact commands and captured output:** [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/reproduction.md)
+**Exact commands and captured output:** [`codepath/reproduction.md`](https://github.com/azizu06/shields/blob/da5c824eff/codepath/reproduction.md)
 
 #### Root Cause and Current Code Path
 
@@ -112,7 +112,7 @@ The Prometheus `endpointEnabled` setting is a nearby gated-handler example. Its 
 - **Review:** Verify all five Dynamic formats, Endpoint, the retired Endpoint compatibility route, default compatibility, configuration validation, environment-variable parsing, generated definitions, and self-hosting documentation.
 - **Evaluate:** Add server-level tests proving the intended routes exist by default and are absent when disabled, prove the fake upstream receives no disabled request, verify an ordinary badge still works, then run focused and broader repository checks.
 
-**Full solution plan:** [`codepath/plan.md`](https://github.com/azizu06/shields/blob/fix-issue-8944/codepath/plan.md)
+**Full solution plan:** [`codepath/plan.md`](https://github.com/azizu06/shields/blob/e585c6d22f/codepath/plan.md)
 
 #### Proactive Edge Cases
 
@@ -135,11 +135,94 @@ The Prometheus `endpointEnabled` setting is a nearby gated-handler example. Its 
 
 ### Phase III - Solution Building
 
-_Waiting for current maintainer direction before production code._
+#### Implementation
+
+- **WIP branch:** https://github.com/azizu06/shields/tree/fix-issue-8944
+- **Implementation start:** July 27, 2026
+- **Reviewed head:** [`3f153bd921`](https://github.com/azizu06/shields/commit/3f153bd92189519afaf6ef48992b801a23b6a4bd)
+- **Base commit:** `f29362a33eae7116ade0df64e378f58ac5010c3a`
+
+I followed the Phase II plan after the issue remained unclaimed and no competing pull request appeared. The implementation adds one required public boolean, `dynamicAndEndpointBadgesEnabled`, with a default of `true` and the environment-variable form `DYNAMIC_AND_ENDPOINT_BADGES_ENABLED`. `Server.registerServices()` filters the `dynamic` and `endpoint` service families before calling each service class's registration method when the setting is false. I kept the policy out of the generic loader because loading a class and exposing its route are separate responsibilities.
+
+This covers seven routes: Dynamic JSON, regex, TOML, XML, and YAML; the current `/endpoint`; and the retired `/badge/endpoint` compatibility route. I did not add a replacement disabled handler. Since the routes are not registered, the server's existing unmatched-route behavior returns the standard `404 | badge not found` badge. An ordinary static badge test proves the setting does not disable unrelated services.
+
+#### Files Changed
+
+- `core/server/server.js`: configuration validation and registration-time family filter
+- `config/default.yml`: enabled default
+- `config/custom-environment-variables.yml`: environment-variable mapping
+- `core/server/server.spec.js`: public-route, no-outbound-request, validation, and environment-parsing coverage
+- `doc/self-hosting.md`: operator configuration and disabled behavior
+
+#### Implementation Commits
+
+- [`de97fd94b6`](https://github.com/azizu06/shields/commit/de97fd94b6): add the public setting and registration filter
+- [`e6ecd50294`](https://github.com/azizu06/shields/commit/e6ecd50294): add disabled and default route tests
+- [`d0d01fb980`](https://github.com/azizu06/shields/commit/d0d01fb980): consolidate repeated test setup
+- [`ed1aaab831`](https://github.com/azizu06/shields/commit/ed1aaab831): document the self-hosting control
+- [`3f153bd921`](https://github.com/azizu06/shields/commit/3f153bd921): cover the complete default route matrix and real environment parsing
+
+#### Challenges and Engineering Decisions
+
+The main challenge was proving the feature at the public server boundary without duplicating every service's existing handler tests. I used one table-driven disabled test for all seven routes, including a persistent fake upstream that must receive no request. The default test makes real in-process requests for Dynamic JSON and current Endpoint, checks the retired route's existing response, and uses shallow registration checks for the other four Dynamic formats.
+
+The final test addition is larger than the production filter because each affected route is a separate service class and the `config` package reads environment values at module load. I ran a test-consolidation checkpoint, shared the teardown and badge assertion logic, mapped route variants instead of copying test blocks, and used fresh Node processes only for the two environment values. Independent standards and specification reviews found no remaining actionable issues.
+
+#### Verification
+
+- `core/server/server.spec.js`: **50 passing**
+- `npm run test:core`: **1,549 passing**
+- `npm run lint`: passed
+- `npm run prettier:check`: passed
+- `npm run defs`: passed with no generated diff
+- `git diff --check upstream/master...HEAD`: passed
+- Independent standards review: clean
+- Independent specification review: clean
+
+#### Phase III Check-in
+
+- [x] Implemented the scoped solution in multiple meaningful commits
+- [x] Added direct behavior tests at the server boundary
+- [x] Ran the focused and broader repository checks
+- [x] Published the implementation branch
+- [ ] Submit the Course Portal check-in with **Phase III Complete** marked
+- [ ] Post one substantive engineering contribution in the course Slack and save the link
 
 ### Phase IV - Pull Request and Submission
 
-_No pull request opened._
+#### Pull Request
+
+- **PR URL:** https://github.com/badges/shields/pull/12064
+- **PR title:** [Dynamic Endpoint] Allow self-hosters to disable open-ended badges
+- **Submitted date:** July 27, 2026
+- **Status:** Open, awaiting maintainer review
+
+#### PR Description Summary
+
+The pull request explains why caller-supplied URL routes are a self-hosting boundary, adds an enabled-by-default shared opt-out, filters both service families before registration, documents the YAML and environment-variable forms, and lists the exact test evidence. Because no maintainer replied to my scope question, I called out the setting name, shared control, and unmatched-route response as assumptions that can be adjusted during review.
+
+#### Pre-submission Checklist
+
+- [x] Code addresses the selected issue
+- [x] Tests written and passing
+- [x] Self-hosting documentation updated
+- [x] Course-only artifacts excluded from the upstream diff
+- [x] Independent standards and specification reviews completed
+- [x] PR description includes `Closes #8944`
+- [ ] Upstream CI complete
+- [ ] Maintainer review received
+
+#### Maintainer Feedback Log
+
+| Date | Reviewer | Feedback | My response / commit |
+|---|---|---|---|
+| | | Awaiting review | |
+
+#### Phase IV Check-in
+
+- [ ] Address all maintainer feedback
+- [ ] Record the review rounds and final outcome here
+- [ ] Submit the Course Portal check-in with **Phase IV Complete** marked
 
 ---
 
@@ -558,4 +641,4 @@ _If you complete a full cycle and start a second one, add a new section above an
 |---|---|---|---|
 | 1 | [#10162](https://github.com/badges/shields/issues/10162) | [#11945](https://github.com/badges/shields/pull/11945) | **Merged** into `master` (2026-06-28) — review feedback addressed, CI green |
 | 2 | [#11286](https://github.com/badges/shields/issues/11286) | [#12026](https://github.com/badges/shields/pull/12026) | **Merged** into `master` (2026-07-21) as [`3d781fc`](https://github.com/badges/shields/commit/3d781fcde7b7a36ad0d041f5994ccc5f4dd74af3). Multi-round maintainer feedback addressed, live redirect coverage added, approval received, and CI green. |
-| 3 | [#8944](https://github.com/badges/shields/issues/8944) | Not opened | **In progress.** Phase I evidence documented, controlled reproduction complete, implementation waiting on fresh maintainer direction. |
+| 3 | [#8944](https://github.com/badges/shields/issues/8944) | [#12064](https://github.com/badges/shields/pull/12064) | **In review.** Phase III implemented and verified; upstream pull request open, awaiting CI and maintainer feedback. |
